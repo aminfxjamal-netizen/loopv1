@@ -25,28 +25,19 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-[#08090A] text-white flex">
-
-      {/* Sidebar */}
       <aside className="w-64 bg-[#0F1117] border-r border-[#1F232B] flex flex-col p-4 fixed h-full">
         <h1 className="text-xl font-bold mb-8 flex items-center gap-2">
           <span className="text-[#4F46E5]">🦋</span> Loop
         </h1>
-
         <button className="w-full py-3 bg-[#4F46E5] text-black font-semibold rounded-2xl mb-6 hover:bg-[#6366F1] transition">
           + New Chat
         </button>
-
         <div className="mb-4">
           <div className="flex items-center gap-2 px-3 py-2 bg-[#111318] rounded-xl border border-[#1F232B]">
             <span className="text-gray-400">🔍</span>
-            <input
-              type="text"
-              placeholder="Search chats..."
-              className="bg-transparent text-sm text-white placeholder-gray-600 outline-none w-full"
-            />
+            <input type="text" placeholder="Search chats..." className="bg-transparent text-sm text-white placeholder-gray-600 outline-none w-full" />
           </div>
         </div>
-
         <div className="mb-6">
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 px-1">Apps</p>
           <div className="flex flex-col gap-1">
@@ -62,7 +53,6 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
         <div className="flex-1">
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 px-1">Recent Chats</p>
           <div className="flex flex-col gap-1">
@@ -77,12 +67,9 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
         <div className="border-t border-[#1F232B] pt-4 mt-4">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-[#4F46E5] flex items-center justify-center text-sm font-bold text-black">
-              A
-            </div>
+            <div className="w-8 h-8 rounded-full bg-[#4F46E5] flex items-center justify-center text-sm font-bold text-black">A</div>
             <div>
               <p className="text-sm font-medium">Amin</p>
               <p className="text-xs text-gray-500">Pro Plan</p>
@@ -90,11 +77,7 @@ export default function Dashboard() {
           </div>
         </div>
       </aside>
-
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col ml-64">
-
-        {/* Topbar */}
         <header className="border-b border-[#1F232B] px-6 py-4 flex items-center justify-between bg-[#08090A]">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-[#4F46E5]"></div>
@@ -106,8 +89,6 @@ export default function Dashboard() {
             Online
           </div>
         </header>
-
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -120,8 +101,6 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-
-        {/* Input */}
         <div className="px-6 py-4 border-t border-[#1F232B]">
           <div className="flex items-center gap-3 bg-[#111318] border border-[#1F232B] rounded-2xl px-4 py-3">
             <input
@@ -132,16 +111,12 @@ export default function Dashboard() {
               placeholder="Message Loop AI..."
               className="flex-1 bg-transparent text-white placeholder-gray-600 outline-none text-sm"
             />
-            <button
-              onClick={handleSend}
-              className="px-5 py-2 bg-[#4F46E5] text-black font-semibold rounded-xl hover:bg-[#6366F1] transition text-sm"
-            >
+            <button onClick={handleSend} className="px-5 py-2 bg-[#4F46E5] text-black font-semibold rounded-xl hover:bg-[#6366F1] transition text-sm">
               Send
             </button>
           </div>
           <p className="text-xs text-gray-600 text-center mt-2">Loop AI can make mistakes. Always verify important information.</p>
         </div>
-
       </div>
     </main>
   );
