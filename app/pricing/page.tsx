@@ -23,7 +23,7 @@ export default function PricingPage() {
               <li>✓ Basic Workspace</li>
               <li>✓ No Credit Card Required</li>
             </ul>
-            <a href="/signup" className="w-full mt-10 bg-[#27272A] hover:bg-[#3F3F46] py-3 rounded-xl font-medium transition text-center block">
+            <a href="/pricing/billing" className="w-full mt-10 bg-[#27272A] hover:bg-[#3F3F46] py-3 rounded-xl font-medium transition text-center block">
               Start Free Trial
             </a>
           </div>
