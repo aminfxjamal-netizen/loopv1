@@ -16,50 +16,30 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">First Name</label>
-                <input
-                  type="text"
-                  placeholder="John"
-                  className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-                />
+                <input type="text" placeholder="John" className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition" />
               </div>
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Last Name</label>
-                <input
-                  type="text"
-                  placeholder="Doe"
-                  className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-                />
+                <input type="text" placeholder="Doe" className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition" />
               </div>
             </div>
 
             <div>
               <label className="block text-sm text-gray-400 mb-2">Email Address</label>
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-              />
+              <input type="email" placeholder="you@company.com" className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition" />
             </div>
 
             <div>
               <label className="block text-sm text-gray-400 mb-2">Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-              />
+              <input type="password" placeholder="••••••••" className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition" />
             </div>
 
             <div>
               <label className="block text-sm text-gray-400 mb-2">Company Name</label>
-              <input
-                type="text"
-                placeholder="Acme Inc."
-                className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-              />
+              <input type="text" placeholder="Acme Inc." className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition" />
             </div>
 
-            <a href="/dashboard" className="w-full py-4 bg-[#4F46E5] text-white font-semibold rounded-2xl hover:bg-[#6366F1] transition text-center block">
+            <a href="/pricing" className="w-full py-4 bg-[#4F46E5] text-white font-semibold rounded-2xl hover:bg-[#6366F1] transition text-center block">
               Get Started
             </a>
 
