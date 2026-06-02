@@ -29,7 +29,7 @@ export default function Home() {
               Start Free Trial
             </a>
           </div>
-          <button className="md:hidden text-zinc-400 hover:text-white" onClick={() => setMenuOpen(!menuOpen)}>
+          <button className="md:hidden text-zinc-400 hover:text-white" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle Menu">
             {menuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
@@ -235,7 +235,7 @@ export default function Home() {
               {
                 name: 'Basic',
                 price: '$9',
-                period: '/ month',
+                period: '/ user / mo',
                 desc: 'For independent builders requiring active day-to-day context.',
                 features: ['Uncapped processing allowances', 'Continuous automated response loops', 'Expanded cloud document sync lines', 'Priority operational query speeds'],
                 cta: 'Choose Basic',
@@ -244,7 +244,7 @@ export default function Home() {
               {
                 name: 'Pro',
                 price: '$29',
-                period: '/ month',
+                period: '/ user / mo',
                 desc: 'For teams integrating data nodes across multi-person systems.',
                 features: ['Advanced collective context engines', 'Deeper operational vector parameters', 'Shared administrative permissions', 'Premium 24/7 routing support lines'],
                 cta: 'Upgrade to Pro',
