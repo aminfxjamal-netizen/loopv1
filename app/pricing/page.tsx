@@ -8,7 +8,6 @@ export default function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Core pricing tiers matrix
   const plans = [
     {
       name: 'Evaluation Run',
@@ -42,8 +41,8 @@ export default function PricingPage() {
       {/* Miro-Style Engineering Grid Sub-layer */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)] opacity-30 pointer-events-none" />
 
-      {/* Notion-Style Clean Header */}
-      <header className="border-b border-[#EEEEEE] fixed top-0 left-0 right-0 h-16 z-50 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.01)]">
+      {/* FIXED TO STICKY: This guarantees it stays inline and occupies genuine layout space */}
+      <header className="border-b border-[#EEEEEE] sticky top-0 w-full h-16 z-50 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex-shrink-0">
         <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-10">
             <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline">
@@ -80,11 +79,11 @@ export default function PricingPage() {
         )}
       </header>
 
-      {/* Content Container Area */}
-      <div className="flex-1 pt-16 relative z-10">
+      {/* Main Content Viewport Area */}
+      <div className="flex-1 relative z-10 w-full overflow-y-auto">
         
-        {/* Hero Header Area - Unique Engineering Title Update */}
-        <section className="pt-20 pb-12 px-6 text-center">
+        {/* Unique Technical Title Section */}
+        <section className="pt-16 pb-12 px-6 text-center">
           <div className="max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-violet-200 bg-violet-50 text-[10px] text-violet-700 font-bold uppercase tracking-wider font-mono mb-6 shadow-sm">
               Runtime Resource Allocation
@@ -92,19 +91,21 @@ export default function PricingPage() {
             <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-gray-950 mb-4 max-w-2xl mx-auto leading-[1.1]">
               Predictable costs.<br />Uncapped orchestration.
             </h1>
-            <p className="text-xs md:text-sm text-gray-400 max-w-md mx-auto mb-10 font-normal leading-relaxed">
-              No arbitrary metrics. Choose a operational framework footprint that aligns cleanly with your workflow volume.
+            <p className="text-xs md:text-sm text-gray-400 max-w-sm mx-auto mb-10 font-normal leading-relaxed">
+              No arbitrary tracking limits. Choose an operational blueprint scale that aligns cleanly with your workflow footprint volume.
             </p>
 
             {/* Billing Toggle Control */}
             <div className="inline-flex items-center gap-2 p-1 bg-white border border-gray-200/80 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.01)]">
               <button
+                type="button"
                 onClick={() => setBillingPeriod('monthly')}
                 className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${billingPeriod === 'monthly' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
                 Monthly runtime
               </button>
               <button
+                type="button"
                 onClick={() => setBillingPeriod('yearly')}
                 className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
               >
@@ -115,7 +116,7 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* Pricing Cards Grid - Explicit Rendering */}
+        {/* Pricing Cards Grid Explicit Frame */}
         <section className="pb-20 px-6 max-w-5xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
             {plans.map((plan, i) => (
@@ -130,7 +131,7 @@ export default function PricingPage() {
                 {plan.highlight && (
                   <span className="absolute -top-2.5 left-4 px-2 py-0.5 bg-violet-600 text-white font-mono text-[9px] uppercase tracking-wider rounded font-black">Standard Configuration</span>
                 )}
-                <div>
+                <div className="flex-1 flex flex-col">
                   <h3 className="font-bold text-base text-gray-950 mb-1">{plan.name}</h3>
                   <p className="text-gray-400 text-[11px] mb-5 font-normal leading-normal min-h-[32px]">{plan.desc}</p>
                   
@@ -141,7 +142,7 @@ export default function PricingPage() {
                     </span>
                   </div>
 
-                  <ul className="flex flex-col gap-3 mb-8 border-t border-gray-100 pt-5">
+                  <ul className="flex flex-col gap-3 mb-8 border-t border-gray-100 pt-5 flex-1">
                     {plan.features.map((feature, j) => (
                       <li key={j} className="flex items-start gap-2 text-xs text-gray-600 font-normal">
                         <span className="text-violet-600 font-bold text-xs leading-none mt-0.5">✓</span>
@@ -153,7 +154,7 @@ export default function PricingPage() {
 
                 <Link 
                   href="/signup" 
-                  className={`block w-full py-2.5 rounded-lg text-center text-xs font-bold transition no-underline ${
+                  className={`block w-full mt-4 py-2.5 rounded-lg text-center text-xs font-bold transition no-underline ${
                     plan.highlight 
                       ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm' 
                       : 'bg-gray-50 border border-gray-200/60 text-gray-700 hover:bg-gray-100'
