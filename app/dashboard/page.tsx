@@ -13,11 +13,6 @@ export default function Dashboard() {
     }
   ]);
   const [input, setInput] = useState('');
-  const [chats, setChats] = useState([
-    'Follow up with John',
-    'Project roadmap',
-    'Draft proposal',
-  ]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -69,7 +64,7 @@ export default function Dashboard() {
 
       {/* Sidebar */}
       <aside className="w-64 bg-[#0F1117] border-r border-[#1F232B] flex flex-col p-4 fixed h-full">
-        <h1 className="text-xl font-bold mb-8 flex items-center gap-2">
+        <h1 className="text-xl font-bold mb-8">
           <span className="text-violet-500">Loop</span>
         </h1>
 
@@ -97,6 +92,7 @@ export default function Dashboard() {
             {[
               { icon: '📧', name: 'Gmail' },
               { icon: '📁', name: 'Google Drive' },
+              { icon: '📅', name: 'Google Calendar' },
             ].map((app, i) => (
               <button key={i} className="flex items-center gap-3 px-3 py-2 rounded-xl text-gray-400 hover:bg-[#111318] hover:text-white transition text-sm">
                 <span>{app.icon}</span> {app.name}
@@ -108,11 +104,7 @@ export default function Dashboard() {
         <div className="flex-1">
           <p className="text-xs text-gray-500 uppercase tracking-widest mb-3 px-1">Recent Chats</p>
           <div className="flex flex-col gap-1">
-            {chats.map((chat, i) => (
-              <button key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl text-gray-400 hover:bg-[#111318] hover:text-white transition text-sm text-left truncate">
-                💬 {chat}
-              </button>
-            ))}
+            <p className="text-xs text-gray-600 px-3">No chats yet</p>
           </div>
         </div>
 
@@ -143,7 +135,6 @@ export default function Dashboard() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col ml-64">
 
-        {/* Topbar */}
         <header className="border-b border-[#1F232B] px-6 py-4 flex items-center justify-between bg-[#08090A]">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-violet-500"></div>
@@ -156,7 +147,6 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-6">
           {messages.map((msg, i) => (
             <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
@@ -170,7 +160,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Input */}
         <div className="px-6 py-4 border-t border-[#1F232B]">
           <div className="flex items-center gap-3 bg-[#111318] border border-[#1F232B] rounded-2xl px-4 py-3">
             <input
