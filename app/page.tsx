@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, FolderOpen, Calendar, Brain, CheckCircle, Zap, ArrowRight, Menu, X, ArrowUpRight, ChevronRight, Lock, Eye } from 'lucide-react';
-import Image from 'next/next-image'; // Fixed image import string for clean builds
+import { Mail, FolderOpen, Calendar, Brain, CheckCircle, Zap, ArrowRight, Menu, X, ChevronRight } from 'lucide-react';
+import Image from 'next/image'; // Fixed import error
 
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -41,7 +41,7 @@ export default function Home() {
           </button>
         </div>
         {menuOpen && (
-          <div className="md:hidden border-t border-[#EEEEEE] px-6 py-5 flex flex-col gap-4 bg-white shadow-xl animate-in fade-in slide-in-from-top-5 duration-200">
+          <div className="md:hidden border-t border-[#EEEEEE] px-6 py-5 flex flex-col gap-4 bg-white shadow-xl">
             <a href="#features" onClick={() => setMenuOpen(false)} className="text-gray-600 hover:text-black transition text-sm font-medium">Features</a>
             <a href="#demo" onClick={() => setMenuOpen(false)} className="text-gray-600 hover:text-black transition text-sm font-medium">Product Demo</a>
             <a href="#pricing" onClick={() => setMenuOpen(false)} className="text-gray-600 hover:text-black transition text-sm font-medium">Pricing</a>
@@ -130,7 +130,7 @@ export default function Home() {
               )}
               {activeTab === 'drive' && (
                 <>
-                  <h3 className="text-2xl font-bold text-gray-900">Drive Knowledge Layer</h3>
+                  <h3 className="text-2xl font-bold text-gray-990">Drive Knowledge Layer</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">Instantly retrieve summaries, compile index parameters, or search technical strings across vast team folders without expanding nested files manual pipelines.</p>
                 </>
               )}
