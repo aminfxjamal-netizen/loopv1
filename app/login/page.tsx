@@ -1,56 +1,135 @@
 'use client';
 
+import { useState } from 'react';
+import { ArrowRight, CheckCircle, Shield, Zap } from 'lucide-react';
+import Link from 'next/link';
+
 export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    // Firebase auth verification hooks link directly here later
+    setTimeout(() => setIsLoading(false), 1000); 
+  };
+
   return (
-    <main className="min-h-screen bg-[#08090A] text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <h1 className="text-2xl font-bold mb-2">
-            <span className="text-[#4F46E5]">🦋</span> Loop
-          </h1>
-          <p className="text-gray-400">Welcome back</p>
-        </div>
+    <main className="min-h-screen bg-[#FAFAFA] text-[#121212] font-sans antialiased flex flex-col md:grid md:grid-cols-12 overflow-x-hidden relative">
+      
+      {/* Miro-Style Engineering Grid Sub-layer */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none z-0" />
 
-        <div className="bg-[#111318] border border-[#1F232B] rounded-3xl p-10">
-          <h2 className="text-2xl font-bold mb-8">Sign in to Loop</h2>
+      {/* Left Panel: Value Proposition & Blueprint Aesthetics (Hidden on Mobile) */}
+      <div className="hidden md:flex md:col-span-5 bg-white border-r border-[#EEEEEE] p-12 flex-col justify-between relative z-10">
+        <div>
+          <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 mb-16 no-underline">
+            <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
+            Loop
+          </Link>
 
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Email Address</label>
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-              />
+          <div className="space-y-8 mt-12 max-w-sm">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border border-violet-200 bg-violet-50 text-[10px] uppercase tracking-wider font-mono font-bold text-violet-700">
+              Session Authorization
             </div>
-
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Password</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full bg-[#08090A] border border-[#1F232B] rounded-2xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-[#4F46E5] transition"
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                <input type="checkbox" className="accent-[#4F46E5]" />
-                Remember me
-              </label>
-              <a href="#" className="text-[#4F46E5] hover:underline">Forgot password?</a>
-            </div>
-
-            <button className="w-full py-4 bg-[#4F46E5] text-black font-semibold rounded-2xl hover:bg-[#6366F1] transition">
-              Sign In
-            </button>
-
-            <p className="text-center text-sm text-gray-400">
-              Don't have an account?{' '}
-              <a href="/signup" className="text-[#4F46E5] hover:underline">Sign up free</a>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-950 leading-tight">
+              Access your active workspace environment.
+            </h2>
+            <p className="text-xs text-gray-500 leading-relaxed font-normal">
+              Authenticate your identity parameters to return to your workspace orchestration queues.
             </p>
           </div>
         </div>
+
+        {/* Security / Quality Checkpoints */}
+        <div className="space-y-4 max-w-sm border-t border-gray-100 pt-8 font-sans">
+          {[
+            { icon: <Zap size={14} className="text-violet-600" />, title: 'Persistent Engine Context', desc: 'Pick up context variables exactly where your last operation left off.' },
+            { icon: <Shield size={14} className="text-violet-600" />, title: 'Secure Cryptographic Keys', desc: 'Cross-app session instances are guarded behind hardened pipeline shields.' },
+            { icon: <CheckCircle size={14} className="text-violet-600" />, title: 'Real-Time Verification', desc: 'Granular checks track all outbound requests to preserve integrity standards.' }
+          ].map((item, i) => (
+            <div key={i} className="flex gap-3 text-left">
+              <div className="mt-0.5">{item.icon}</div>
+              <div>
+                <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wide">{item.title}</h4>
+                <p className="text-[11px] text-gray-400 leading-normal font-normal mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[10px] text-gray-400 font-mono tracking-tight">&copy; 2026 Loop Engine Studio. Security status verified.</p>
+      </div>
+
+      {/* Right Panel: Pristine Minimalist Form Block */}
+      <div className="flex-1 md:col-span-7 flex items-center justify-center p-6 sm:p-12 relative z-10">
+        
+        {/* Mobile Header Logo replacement */}
+        <div className="absolute top-6 left-6 md:hidden">
+          <Link href="/" className="text-base font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline">
+            <span className="w-4 h-4 bg-violet-600 rounded flex items-center justify-center text-white text-[10px] font-black">L</span>
+            Loop
+          </Link>
+        </div>
+
+        <div className="w-full max-w-[380px] bg-white border border-gray-200/80 rounded-xl p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)] text-left">
+          <div className="mb-6">
+            <h1 className="text-xl font-bold tracking-tight text-gray-950 mb-1.5">Welcome back</h1>
+            <p className="text-xs text-gray-400">Authorize your account to access your workspace panels.</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">Work Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.com"
+                className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs font-sans placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">Password</label>
+                <a href="/forgot-password" className="text-[10px] text-violet-600 hover:text-violet-700 font-medium font-sans no-underline">Forgot password?</a>
+              </div>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs font-sans placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg text-xs shadow-sm shadow-violet-600/10 flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+              >
+                {isLoading ? 'Authorizing Session...' : 'Authorize Session'}
+                {!isLoading && <ArrowRight size={13} />}
+              </button>
+            </div>
+          </form>
+
+          <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400 font-sans">
+              New to our workspace framework?{' '}
+              <Link href="/signup" className="text-violet-600 hover:text-violet-700 font-semibold transition no-underline">
+                Create account
+              </Link>
+            </p>
+          </div>
+        </div>
+
       </div>
     </main>
   );
