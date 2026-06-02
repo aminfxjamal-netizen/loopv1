@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Mail, FolderOpen, Calendar, Brain, CheckCircle, Zap, ArrowRight, Menu, X, ChevronRight } from 'lucide-react';
-import Image from 'next/image'; // Fixed import error
+import Image from 'next/image';
 
 export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -130,7 +130,7 @@ export default function Home() {
               )}
               {activeTab === 'drive' && (
                 <>
-                  <h3 className="text-2xl font-bold text-gray-990">Drive Knowledge Layer</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">Drive Knowledge Layer</h3>
                   <p className="text-sm text-gray-500 leading-relaxed">Instantly retrieve summaries, compile index parameters, or search technical strings across vast team folders without expanding nested files manual pipelines.</p>
                 </>
               )}
@@ -275,7 +275,10 @@ export default function Home() {
                   <h3 className="font-bold text-sm text-gray-900 mb-1">{integration.name}</h3>
                   <p className="text-gray-500 text-xs leading-relaxed mb-4">{integration.desc}</p>
                 </div>
-                <button className="w-full py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition shadow-sm">Connected</button>
+                {/* Fixed line: changed button label from 'Connected' to 'Connect' */}
+                <button className="w-full py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold rounded-lg transition shadow-sm">
+                  Connect
+                </button>
               </div>
             ))}
           </div>
@@ -393,7 +396,6 @@ export default function Home() {
   );
 }
 
-// Minimal placeholder subcomponent required to handle lucide mapping arrays safely
 function Clock(props: any) {
   return (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
