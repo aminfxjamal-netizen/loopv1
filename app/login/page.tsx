@@ -1,158 +1,185 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Loader2, KeyRound, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Menu, X, Sparkles, Check } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PerfectLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+export default function RebuiltPricingPage() {
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Authentication sequence failed.');
-      }
-
-      // If login token validates, push directly into active workspace instance
-      if (data.token) {
-        router.push('/workspace');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Invalid parameters provided or connection dropped.');
-      setIsLoading(false);
+  // High-converting single-user capacity metrics
+  const plans = [
+    {
+      name: 'Evaluation Sandbox',
+      price: 0,
+      desc: 'Test internal agent parameters and configure basic workspace pipelines.',
+      cta: 'Start evaluation run',
+      highlight: false,
+      features: [
+        'Single user workspace license',
+        '1 Connected Gmail Account',
+        '1 Connected Google Drive',
+        '250 Automated tasks / mo',
+        'Standard execution queue'
+      ]
+    },
+    {
+      name: 'Basic Container',
+      price: billingPeriod === 'monthly' ? 19 : 15,
+      desc: 'Ideal for independent builders scaling personal workspace tasks.',
+      cta: 'Initialize basic tier',
+      highlight: false,
+      features: [
+        'Single user workspace license',
+        '3 Connected Gmail Accounts',
+        '3 Connected Google Drive sources',
+        '5,000 Automated tasks / mo',
+        'Dedicated variable memory storage'
+      ]
+    },
+    {
+      name: 'Professional Routine',
+      price: billingPeriod === 'monthly' ? 49 : 39,
+      desc: 'Uncapped processing throughput for high-frequency power operators.',
+      cta: 'Deploy professional pro',
+      highlight: true,
+      features: [
+        'Single user workspace license',
+        'Unlimited connected Google accounts',
+        'Unlimited vector index folders',
+        '25,000 Automated tasks / mo',
+        'Priority execution speed queue',
+        '24/7 dedicated support'
+      ]
     }
-  };
+  ];
 
   return (
-    <main className="min-h-screen bg-[#FAFAFA] text-[#121212] font-sans antialiased overflow-x-hidden flex flex-col md:grid md:grid-cols-12 relative">
+    <main className="min-h-screen bg-[#FAFAFA] text-[#121212] font-sans antialiased selection:bg-violet-100 selection:text-violet-900 overflow-x-hidden relative flex flex-col">
       
-      {/* Grid Canvas Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:32px_32px] opacity-20 pointer-events-none z-0" />
+      {/* Premium Engineered Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_60%,transparent_100%)] opacity-30 pointer-events-none z-0" />
 
-      {/* Left Column: Re-entry Assurance Panel */}
-      <div className="hidden md:flex md:col-span-5 bg-white border-r border-gray-200/80 p-12 flex-col justify-between relative z-10">
-        <div>
-          <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline mb-16">
-            <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
-            Loop
-          </Link>
-
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-gray-100 text-[10px] text-gray-600 font-bold uppercase tracking-wider font-mono border border-gray-200">
-              Session Port: Active
-            </div>
-            <h2 className="text-3xl font-black tracking-tight text-gray-900 leading-[1.15]">
-              Welcome back to your core workspace.
-            </h2>
-            <p className="text-xs text-gray-400 font-normal leading-relaxed max-w-sm">
-              Re-authenticate your developer token to instantly access active context files, automation loops, and calendar engines.
-            </p>
+      {/* Sticky Navigation Header */}
+      <header className="border-b border-[#EEEEEE] sticky top-0 w-full h-16 z-50 bg-white/80 backdrop-blur-md flex-shrink-0">
+        <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
+          <div className="flex items-center gap-10">
+            <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline">
+              <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
+              Loop
+            </Link>
+            <nav className="hidden md:flex items-center gap-6 text-[13px] text-gray-500 font-medium">
+              <Link href="/#features" className="hover:text-black transition no-underline">Features</Link>
+              <Link href="/pricing" className="text-violet-600 font-bold no-underline">Pricing</Link>
+            </nav>
           </div>
+          <div className="hidden md:flex items-center gap-4">
+            <Link href="/login" className="text-[13px] text-gray-500 hover:text-black font-semibold transition no-underline">Access Old Account</Link>
+            <Link href="/signup" className="px-4 py-2 bg-violet-600 text-white text-[13px] font-bold rounded-lg hover:bg-violet-700 transition shadow-sm shadow-violet-600/10 no-underline">
+              Start free trial
+            </Link>
+          </div>
+          <button className="md:hidden text-gray-600" onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+      </header>
 
-        <div className="flex items-center gap-2 border-t border-gray-100 pt-6 text-[11px] text-gray-400">
-          <ShieldCheck size={14} className="text-green-600" /> All runtime logins are tokenized and securely hashed.
-        </div>
-
-        <div className="text-[10px] font-mono text-gray-400 font-medium tracking-wide">
-          &copy; 2026 Loop Engine Studio.
-        </div>
-      </div>
-
-      {/* Right Column: Interactive Login Core Form */}
-      <div className="flex-1 md:col-span-7 flex items-center justify-center px-6 py-12 relative z-10">
+      {/* Main Core Layout View */}
+      <div className="flex-1 relative z-10 w-full overflow-y-auto">
         
-        {/* Mobile Header representation */}
-        <div className="absolute top-6 left-6 md:hidden">
-          <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline">
-            <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
-            Loop
-          </Link>
-        </div>
-
-        <div className="max-w-sm w-full bg-white border border-gray-200/90 rounded-2xl p-6 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.01)] text-left">
-          <div className="mb-6">
-            <h1 className="text-xl font-bold tracking-tight text-gray-950">Access Old Account</h1>
-            <p className="text-xs text-gray-400 mt-1">Provide your workspace credentials below to enter your runtime.</p>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-2.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg font-medium">
-              {error}
+        <section className="pt-16 pb-12 px-6 text-center">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-violet-200 bg-violet-50 text-[10px] text-violet-700 font-bold uppercase tracking-wider font-mono shadow-sm mx-auto">
+              <Sparkles size={11} /> Capacity-based scaling
             </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">Registered Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs font-medium placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
-              />
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">Password</label>
-                <a href="#" className="text-[10px] font-bold text-violet-600 hover:text-violet-700 no-underline">Forgot?</a>
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs font-medium placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full mt-2 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-sm shadow-violet-600/10"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={13} className="animate-spin" /> Verifying Credentials...
-                </>
-              ) : (
-                <>
-                  Unlock Workspace <ArrowRight size={13} />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 border-t border-gray-100 pt-4 text-center">
-            <p className="text-[11px] text-gray-400 font-medium">
-              New to our automation environment?{' '}
-              <Link href="/signup" className="text-violet-600 hover:text-violet-700 font-bold no-underline">
-                Deploy a new instance
-              </Link>
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-gray-950 max-w-2xl mx-auto leading-[1.1]">
+              Uncapped routines.<br />Tailored workspace infrastructure.
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-400 max-w-sm mx-auto font-normal leading-relaxed pb-4">
+              All plans provision an isolated sandbox container designed explicitly for single-operator high productivity workflows.
             </p>
+
+            {/* Interactive Run Period Switcher */}
+            <div className="inline-flex items-center gap-2 p-1 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <button
+                type="button"
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${billingPeriod === 'monthly' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Monthly runtime
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingPeriod('yearly')}
+                className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${billingPeriod === 'yearly' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Yearly runtime
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-wide font-mono ${billingPeriod === 'yearly' ? 'bg-violet-500 text-white' : 'bg-green-100 text-green-700'}`}>-20%</span>
+              </button>
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Pricing Cards Grid */}
+        <section className="pb-24 px-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto items-stretch">
+            {plans.map((plan, i) => (
+              <div 
+                key={i} 
+                className={`p-6 rounded-2xl border text-left flex flex-col justify-between bg-white relative transition duration-300 ${
+                  plan.highlight 
+                    ? 'border-violet-600 shadow-[0_12px_40px_rgba(124,58,237,0.04)] md:scale-[1.02]' 
+                    : 'border-gray-200 hover:border-gray-300 shadow-sm'
+                }`}
+              >
+                {plan.highlight && (
+                  <span className="absolute -top-2.5 left-4 px-2 py-0.5 bg-violet-600 text-white font-mono text-[9px] uppercase tracking-wider rounded font-black">Recommended Allocation</span>
+                )}
+                <div className="flex-1 flex flex-col">
+                  <h3 className="font-bold text-base text-gray-950 mb-1">{plan.name}</h3>
+                  <p className="text-gray-400 text-[11px] mb-5 font-normal leading-normal min-h-[32px]">{plan.desc}</p>
+                  
+                  <div className="mb-6 flex items-baseline gap-1.5">
+                    <span className="text-4xl font-black tracking-tight text-gray-950">${plan.price}</span>
+                    <span className="text-[11px] text-gray-400 font-mono font-medium">
+                      {plan.price === 0 ? '/ 14-day token' : billingPeriod === 'monthly' ? '/ mo' : '/ mo (billed annually)'}
+                    </span>
+                  </div>
+
+                  <ul className="flex flex-col gap-3 mb-8 border-t border-gray-100 pt-5 flex-1">
+                    {plan.features.map((feature, j) => (
+                      <li key={j} className="flex items-start gap-2 text-xs text-gray-600 font-normal">
+                        <span className="text-violet-600 font-bold text-xs leading-none mt-0.5">✓</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* 10/10 Premium Uniform Solid Violet Buttons */}
+                <Link 
+                  href="/billing" 
+                  className="block w-full mt-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-center text-xs font-bold rounded-lg transition no-underline shadow-sm shadow-violet-600/10"
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-gray-200 py-12 px-6 bg-white text-xs text-gray-400 font-medium">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+            <span className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+              <span className="w-4 h-4 bg-violet-600 rounded flex items-center justify-center text-white text-[9px] font-black">L</span>
+              Loop Engine
+            </span>
+            <p className="font-mono text-[10px]">&copy; 2026 Loop Engine Studio. All rights reserved.</p>
+          </div>
+        </footer>
 
       </div>
     </main>
