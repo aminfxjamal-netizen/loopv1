@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, ArrowRight, Activity } from 'lucide-react';
+import { ShieldCheck, ArrowRight } from 'lucide-react';
+import { supabase } from '@/lib/supabase'; // Using your active Supabase client instance
 
 export default function ProductionLoginPage() {
   const router = useRouter();
@@ -18,12 +19,27 @@ export default function ProductionLoginPage() {
     setError(null);
 
     try {
-      // NOTE: This bypasses stale Supabase client rejections and bridges 
-      // directly to your production workspace container safely.
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      router.push('/workspace');
+      // Real live Supabase Authentication call
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      // If credentials match, route straight to your core dashboard layout
+      router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.message || "Security access token handshake rejected.");
+      console.error("Auth Rejection:", err.message);
+      
+      // Catch invalid credentials or fake passwords instantly
+      if (err.message?.includes('Invalid login credentials') || err.status === 400) {
+        setError("INVALID_ACCESS_KEY: Password or user identity rejection.");
+      } else {
+        setError(err.message || "Security access token handshake rejected.");
+      }
     } finally {
       setLoading(false);
     }
@@ -37,14 +53,14 @@ export default function ProductionLoginPage() {
         <div className="space-y-2 text-center">
           <div className="inline-flex items-center gap-2 text-[10px] text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded bg-emerald-500/5 mx-auto">
             <ShieldCheck size={11} />
-            <span>SECURE IDENTITY GATEWAY</span>
+            <span>SECURE SUPABASE GATEWAY</span>
           </div>
           <h2 className="text-xl font-black text-white uppercase tracking-tight">Operator Login</h2>
           <p className="text-[11px] text-[#A1A1AA]">Authenticate workspace configuration tokens.</p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-500/5 border border-red-500/20 rounded text-[11px] text-red-400">
+          <div className="p-3 bg-red-500/5 border border-red-500/20 rounded text-[11px] text-red-400 font-mono">
             [ERR]: {error}
           </div>
         )}
