@@ -2,192 +2,182 @@
 
 import { useState } from 'react';
 import { 
-  LayoutDashboard, 
-  Mail, 
-  HardDrive, 
-  Calendar, 
-  Settings, 
-  Layers, 
-  LogOut, 
+  MessageSquare, 
+  Plus, 
+  Send, 
   Search, 
-  Bell,
-  Sliders,
-  CheckCircle2,
-  RefreshCw
+  Menu,
+  ChevronDown
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function WorkspaceDashboard() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  const triggerSync = () => {
-    setIsSyncing(true);
-    setTimeout(() => setIsSyncing(false), 2000);
-  };
+export default function ChatWorkspaceDashboard() {
+  const [message, setMessage] = useState('');
+  const [chatHistory, setChatHistory] = useState([
+    { id: '1', title: 'Analyze pitch deck structure' },
+    { id: '2', title: 'Draft follow-up to partner' },
+    { id: '3', title: 'Summarize Q3 Drive receipts' },
+  ]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#121212] font-sans antialiased flex overflow-hidden h-screen w-screen">
+    <div className="min-h-screen bg-white text-[#121212] font-sans antialiased flex overflow-hidden h-screen w-screen">
       
-      {/* 1. Left Sidebar Navigation Container */}
-      <aside className="w-64 bg-white border-r border-gray-200/80 flex flex-col justify-between h-full z-20 flex-shrink-0">
-        <div>
-          {/* Logo Context Frame */}
-          <div className="h-16 border-b border-gray-100 flex items-center px-6 gap-2">
-            <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
-            <span className="text-sm font-bold tracking-tight text-gray-950">Loop Workspace</span>
-            <span className="ml-auto px-1.5 py-0.5 rounded bg-violet-50 border border-violet-100 text-[9px] font-mono font-bold text-violet-700">V1.0</span>
+      {/* 1. Left Navigation Sidebar */}
+      <aside className="w-64 bg-[#FAFAFA] border-r border-gray-200/80 flex flex-col justify-between h-full z-20 flex-shrink-0 font-medium">
+        <div className="flex flex-col flex-1 overflow-y-auto">
+          
+          {/* Top Control Block: Brand & New Chat Node */}
+          <div className="p-4 space-y-4">
+            <div className="flex items-center px-2 gap-2">
+              <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
+              <span className="text-sm font-bold tracking-tight text-gray-950">Loop Engine</span>
+            </div>
+
+            <button className="w-full h-10 border border-gray-200 hover:border-gray-300 bg-white rounded-lg text-xs font-bold text-gray-800 transition flex items-center justify-between px-3 shadow-sm group">
+              <span className="flex items-center gap-2">
+                <Plus size={14} className="text-violet-600" />
+                New chat
+              </span>
+              <span className="text-[10px] bg-gray-100 text-gray-400 group-hover:bg-gray-200 font-mono px-1.5 py-0.5 rounded transition">⌘N</span>
+            </button>
           </div>
 
-          {/* Navigation Route Nodes */}
-          <nav className="p-4 space-y-1">
-            <button
-              onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'overview' ? 'bg-violet-50 text-violet-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
-            >
-              <LayoutDashboard size={15} /> Overview Terminal
-            </button>
-            <button
-              onClick={() => setActiveTab('gmail')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'gmail' ? 'bg-violet-50 text-violet-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
-            >
-              <Mail size={15} /> Gmail Analytics
-            </button>
-            <button
-              onClick={() => setActiveTab('drive')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'drive' ? 'bg-violet-50 text-violet-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
-            >
-              <HardDrive size={15} /> Drive Context Vector
-            </button>
-            <button
-              onClick={() => setActiveTab('schedule')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'schedule' ? 'bg-violet-50 text-violet-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-50'}`}
-            >
-              <Calendar size={15} /> Routine Scheduler
-            </button>
-          </nav>
+          {/* Section: Connected Data Apps */}
+          <div className="px-4 py-2">
+            <h3 className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono mb-2">Apps</h3>
+            <div className="space-y-0.5">
+              
+              {/* Gmail Sync Node */}
+              <button className="w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-950 hover:bg-gray-200/50 transition">
+                <span className="flex items-center gap-2.5">
+                  {/* Google Gmail SVG Logo */}
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="#4285F4" d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/>
+                    <path fill="#EA4335" d="M22 6v12c0 1.1-.9 2-2 2h-2V8l-6 4-6-4v12H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h16c1.1 0 2 .9 2 2z"/>
+                    <path fill="#FBBC05" d="M20 4H4c-1.1 0-2 .9-2 2v1l10 6.5L22 7V6c0-1.1-.9-2-2-2z"/>
+                    <path fill="#34A853" d="M2 7v11c0 1.1.9 2 2 2h3V9.5L2 7z"/>
+                  </svg>
+                  Gmail
+                </span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+              </button>
+
+              {/* Google Drive Sync Node */}
+              <button className="w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-950 hover:bg-gray-200/50 transition">
+                <span className="flex items-center gap-2.5">
+                  {/* Google Drive SVG Logo */}
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="#0066DA" d="M19.4 17.5H4.6L2 13 4.6 8.5h14.8l2.6 4.5-2.6 4.5z"/>
+                    <path fill="#00AA47" d="M15.2 8.5H2L4.6 4h13.2L15.2 8.5z"/>
+                    <path fill="#FFBA00" d="M9.4 17.5L2 4.5h5.3l7.4 13h-5.3z"/>
+                  </svg>
+                  Google Drive
+                </span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+              </button>
+
+              {/* Calendar Sync Node */}
+              <button className="w-full flex items-center justify-between px-2 py-2 rounded-lg text-xs font-semibold text-gray-600 hover:text-gray-950 hover:bg-gray-200/50 transition">
+                <span className="flex items-center gap-2.5">
+                  {/* Google Calendar SVG Logo */}
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" width="24" height="24">
+                    <path fill="#FFF" d="M0 0h24v24H0z"/>
+                    <path fill="#4285F4" d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                    <path fill="#FFF" d="M19 19H5V8h14v11zM19 5h-2v1h-2V5H9v1H7V5H5v1h14V5z"/>
+                    <path fill="#4285F4" d="M8 11h3v3H8zm4 0h4v3h-4zm-4 4h3v3H8zm4 0h4v3h-4z"/>
+                  </svg>
+                  Calendar
+                </span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+              </button>
+
+            </div>
+          </div>
+
+          {/* Section: Recent Chat Streams */}
+          <div className="px-4 py-4 flex-1 overflow-y-auto">
+            <h3 className="px-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono mb-2">Recent Chats</h3>
+            <div className="space-y-0.5">
+              {chatHistory.map((chat) => (
+                <button 
+                  key={chat.id} 
+                  className="w-full flex items-center gap-2 px-2 py-2 text-xs font-semibold text-gray-500 hover:text-gray-950 rounded-lg hover:bg-gray-200/40 text-left transition truncate whitespace-nowrap"
+                >
+                  <MessageSquare size={13} className="text-gray-400 flex-shrink-0" />
+                  <span className="truncate">{chat.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
 
-        {/* System Settings & Outbound Portal */}
-        <div className="p-4 border-t border-gray-100 space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold text-gray-400 hover:text-gray-900 hover:bg-gray-50 transition">
-            <Settings size={15} /> System Settings
-          </button>
-          <Link href="/login" className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50/50 transition no-underline">
-            <LogOut size={15} /> Terminate Session
-          </Link>
+        {/* User Identity Frame */}
+        <div className="p-4 border-t border-gray-200/60 bg-gray-50/50 flex items-center gap-3">
+          <div className="w-7 h-7 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-black shadow-sm">
+            A
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-gray-900 truncate">Workspace Node</p>
+          </div>
+          <ChevronDown size={14} className="text-gray-400" />
         </div>
       </aside>
 
-      {/* 2. Main Terminal Content Workspace Area */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      {/* 2. Main Chat Workspace Interface */}
+      <main className="flex-1 flex flex-col h-full bg-white relative">
         
-        {/* Engineering Canvas Grid Mesh Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:32px_32px] opacity-10 pointer-events-none z-0" />
-
-        {/* Global Action Header Banner */}
-        <header className="h-16 border-b border-gray-200 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between relative z-10 flex-shrink-0">
-          <div className="flex items-center gap-3 bg-[#FAFAFA] border border-gray-200 rounded-lg px-3 py-1.5 w-72">
-            <Search size={13} className="text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Query workspace indexes..." 
-              className="bg-transparent border-none outline-none text-xs w-full font-medium placeholder:text-gray-300"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={triggerSync}
-              disabled={isSyncing}
-              className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-bold bg-white hover:bg-gray-50 transition shadow-sm inline-flex items-center gap-1.5 disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={isSyncing ? "animate-spin text-violet-600" : ""} />
-              {isSyncing ? "Syncing Integration Matrices..." : "Sync Datastream"}
-            </button>
-            <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-violet-600/20">
-              A
-            </div>
+        {/* Dynamic Header */}
+        <header className="h-14 border-b border-gray-100 flex items-center justify-between px-6 z-10 flex-shrink-0">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-800">
+            <span>Workspace Sandbox</span>
+            <span className="text-gray-300">/</span>
+            <span className="text-gray-400 font-medium">Untitled Thread</span>
           </div>
         </header>
 
-        {/* Core Interactive Grid Engine Space */}
-        <main className="flex-1 p-6 overflow-y-auto relative z-10 space-y-6">
-          
-          {/* Section: Operational Overview Status Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Pure Clean Message Space (No default text walls) */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 max-w-2xl mx-auto w-full flex flex-col justify-center items-center">
+          {/* Intentional Empty Workspace Canvas: Ready for Input */}
+          <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center border border-violet-100/50 shadow-sm animate-pulse">
+            <span className="w-2 h-2 bg-violet-600 rounded-full" />
+          </div>
+        </div>
+
+        {/* Global Chat Input Dock */}
+        <div className="p-6 bg-gradient-to-t from-white via-white to-transparent flex-shrink-0 z-10">
+          <div className="max-w-2xl mx-auto relative border border-gray-200 focus-within:border-gray-300 rounded-xl bg-white p-2 transition shadow-sm">
+            <textarea
+              rows={1}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder=""
+              className="w-full bg-transparent resize-none outline-none py-2 px-3 text-xs font-medium text-gray-900 placeholder-transparent min-h-[40px] max-h-[160px]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  setMessage('');
+                }
+              }}
+            />
             
-            {/* Component: Gmail Analytics Tracker */}
-            <div className="bg-white border border-gray-200/90 rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.01)] text-left">
-              <div className="flex items-center justify-between mb-4">
-                <span className="p-2 bg-violet-50 text-violet-600 rounded-lg"><Mail size={16} /></span>
-                <span className="text-[10px] font-mono font-bold uppercase text-green-600 tracking-wider bg-green-50 px-2 py-0.5 rounded border border-green-100">Live Listening</span>
+            {/* Input Utilities Strip */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-50 px-2">
+              <div className="flex items-center gap-1.5 text-gray-400">
+                <span className="text-[10px] font-mono bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded">Context Engine Active</span>
               </div>
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono">Gmail Intelligence</h3>
-              <p className="text-2xl font-black text-gray-950 tracking-tight mt-1">1,420</p>
-              <p className="text-[11px] text-gray-400 mt-2">Emails parsed today • <span className="text-violet-600 font-bold">12 drafting routines pending</span></p>
-            </div>
-
-            {/* Component: Vector Files Context Deck */}
-            <div className="bg-white border border-gray-200/90 rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.01)] text-left">
-              <div className="flex items-center justify-between mb-4">
-                <span className="p-2 bg-blue-50 text-blue-600 rounded-lg"><HardDrive size={16} /></span>
-                <span className="text-[10px] font-mono font-bold uppercase text-blue-600 tracking-wider bg-blue-50 px-2 py-0.5 rounded border border-blue-100">8.4 GB Indexed</span>
-              </div>
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono">Drive Context Blocks</h3>
-              <p className="text-2xl font-black text-gray-950 tracking-tight mt-1">348</p>
-              <p className="text-[11px] text-gray-400 mt-2">Vector embeddings calculated • <span className="text-blue-600 font-bold">Drive Sync Stable</span></p>
-            </div>
-
-            {/* Component: Calendar Routine Engine */}
-            <div className="bg-white border border-gray-200/90 rounded-xl p-5 shadow-[0_2px_12px_rgba(0,0,0,0.01)] text-left">
-              <div className="flex items-center justify-between mb-4">
-                <span className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Calendar size={16} /></span>
-                <span className="text-[10px] font-mono font-bold uppercase text-emerald-600 tracking-wider bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Optimal Blocks</span>
-              </div>
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono">Automated Schedule Blocks</h3>
-              <p className="text-2xl font-black text-gray-950 tracking-tight mt-1">14 / 18</p>
-              <p className="text-[11px] text-gray-400 mt-2">Conflicts resolved autonomously • <span className="text-emerald-600 font-bold">4 blocks clear</span></p>
-            </div>
-
-          </div>
-
-          {/* Section: Active Log Pipeline Event Stream */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-[0_2px_12px_rgba(0,0,0,0.01)] text-left">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-4">
-              <div>
-                <h2 className="text-sm font-bold text-gray-950 tracking-tight">Active Automation Runtime Logs</h2>
-                <p className="text-[11px] text-gray-400 mt-0.5">Real-time breakdown of single-operator analytical routines running in your pipeline container.</p>
-              </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-1 bg-[#FAFAFA] border border-gray-200 rounded text-gray-500">Streaming Console</span>
-            </div>
-
-            <div className="space-y-3.5 max-h-72 overflow-y-auto pr-2 font-mono text-[11px]">
-              <div className="flex items-start gap-3 p-2 bg-[#FAFAFA] border border-gray-100 rounded-lg">
-                <span className="text-violet-600 font-bold mt-0.5">●</span>
-                <div>
-                  <span className="text-gray-400 font-bold">[06:12:44] [GMAIL_AGENT]:</span> Analyzed deep thread context regarding 'Corporate Q3 Metric Signoff'. Drafted structural confirmation response.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-2 bg-[#FAFAFA] border border-gray-100 rounded-lg">
-                <span className="text-blue-600 font-bold mt-0.5">●</span>
-                <div>
-                  <span className="text-gray-400 font-bold">[05:48:12] [DRIVE_INDEXER]:</span> Vectorized new context block matching file path: <code className="bg-gray-100 text-gray-800 px-1 rounded font-mono">/proposals/premium_structure_2026.pdf</code>.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-2 bg-[#FAFAFA] border border-gray-100 rounded-lg">
-                <span className="text-emerald-600 font-bold mt-0.5">●</span>
-                <div>
-                  <span className="text-gray-400 font-bold">[04:30:00] [CALENDAR_ROUTINE]:</span> Detected appointment overlay at 14:00. Rescheduled routine focus window block automatically. No prompt fallback required.
-                </div>
-              </div>
+              <button 
+                type="submit"
+                disabled={!message.trim()}
+                className="p-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition shadow-sm disabled:opacity-30 flex items-center justify-center"
+              >
+                <Send size={13} />
+              </button>
             </div>
           </div>
+        </div>
 
-        </main>
-      </div>
+      </main>
     </div>
   );
 }
