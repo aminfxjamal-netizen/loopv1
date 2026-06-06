@@ -30,7 +30,7 @@ export default function LoopLandingPage() {
             Login
           </Link>
           <Link href="/signup" className="h-9 px-4 bg-white hover:bg-[#E4E4E7] text-black text-xs font-medium rounded transition flex items-center justify-center">
-            Start Free Trial
+            Get Started
           </Link>
         </div>
       </header>
@@ -47,7 +47,7 @@ export default function LoopLandingPage() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
           <Link href="/signup" className="w-full sm:w-auto h-11 px-6 bg-white hover:bg-[#E4E4E7] text-black text-sm font-medium rounded transition flex items-center justify-center">
-            Start Free Trial
+            Get Started
           </Link>
           <Link href="/login" className="w-full sm:w-auto h-11 px-6 border border-[#18181B] bg-[#000000] text-[#A1A1AA] hover:text-white hover:border-[#27272A] text-sm font-medium rounded transition flex items-center justify-center">
             Login
@@ -143,7 +143,7 @@ export default function LoopLandingPage() {
                 </div>
               </div>
               <Link href="/signup" className="w-full h-9 border border-[#18181B] hover:border-[#27272A] text-white text-xs font-medium rounded transition flex items-center justify-center mt-8">
-                Start Free Trial
+                Get Started
               </Link>
             </div>
 
@@ -152,11 +152,11 @@ export default function LoopLandingPage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-white">Starter</h3>
-                  <div className="text-2xl font-bold text-white mt-1">$9<span className="text-xs font-normal text-[#71717A]">/user/month</span></div>
+                  <div className="text-2xl font-bold text-white mt-1">$19<span className="text-xs font-normal text-[#71717A]">/user/month</span></div>
                 </div>
               </div>
               <Link href="/signup" className="w-full h-9 bg-white text-black text-xs font-medium rounded hover:bg-[#E4E4E7] transition flex items-center justify-center mt-8">
-                Start Free Trial
+                Get Started
               </Link>
             </div>
 
@@ -165,11 +165,11 @@ export default function LoopLandingPage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-white">Pro</h3>
-                  <div className="text-2xl font-bold text-white mt-1">$29<span className="text-xs font-normal text-[#71717A]">/user/month</span></div>
+                  <div className="text-2xl font-bold text-white mt-1">$49<span className="text-xs font-normal text-[#71717A]">/user/month</span></div>
                 </div>
               </div>
               <Link href="/signup" className="w-full h-9 border border-[#18181B] hover:border-[#27272A] text-white text-xs font-medium rounded transition flex items-center justify-center mt-8">
-                Start Free Trial
+                Get Started
               </Link>
             </div>
           </div>
@@ -178,9 +178,9 @@ export default function LoopLandingPage() {
 
       {/* Final CTA */}
       <section className="max-w-4xl mx-auto px-6 py-20 text-center space-y-6 border-t border-[#18181B]">
-        <h2 className="text-2xl font-bold text-white uppercase tracking-tight">Ready to transform your business?</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Ready to transform your business?</h2>
         <Link href="/signup" className="inline-flex h-11 px-6 bg-white hover:bg-[#E4E4E7] text-black text-sm font-medium rounded transition items-center justify-center mx-auto">
-          Start Free Trial
+          Get Started
         </Link>
       </section>
 
