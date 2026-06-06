@@ -10,6 +10,8 @@ export default function EnhancedSignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [statusLog, setStatusLog] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,14 +33,16 @@ export default function EnhancedSignupPage() {
       if (authError) throw authError;
 
       if (authData?.user) {
-        setStatusLog('Auth record verified. Provisioning internal database container...');
+        setStatusLog('Auth record verified. Provisioning internal database container with metadata...');
 
-        // 2. Provision the custom user profile with their initial Free Trial allocation
+        // 2. Provision the custom user profile with ALL metadata fields
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert([
             {
               user_id: authData.user.id,
+              display_name: displayName,
+              company_name: companyName,
               plan_tier: 'free',
               remaining_tokens: 1500000, // Allocating the 1.5M Evaluation Sandbox tokens
               last_reset_date: new Date().toISOString(),
@@ -46,8 +50,7 @@ export default function EnhancedSignupPage() {
           ]);
 
         if (profileError) {
-          console.error('Database instantiation error:', profileError.message);
-          // Keep flowing even if profile insert flags, but log it for backend debugging
+          throw new Error(`Database instantiation failed: ${profileError.message}`);
         }
 
         setStatusLog('Registration successful. Redirecting to workspace console...');
@@ -73,11 +76,40 @@ export default function EnhancedSignupPage() {
             <Cpu size={20} />
           </div>
           <h2 className="text-sm font-black uppercase tracking-widest text-white">Create Operator Account</h2>
-          <p className="text-[10px] text-[#52525B]">PROVISION A NEW LOOP ENGINE RUNTIME NODES</p>
+          <p className="text-[10px] text-[#52525B]">PROVISION A NEW LOOP ENGINE RUNTIME NODE</p>
         </div>
 
         {/* INPUT DISPATCH FORM */}
         <form onSubmit={handleRegisterPipeline} className="space-y-4">
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Display Name</label>
+              <input
+                type="text"
+                required
+                disabled={loading}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Amin"
+                className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Company</label>
+              <input
+                type="text"
+                required
+                disabled={loading}
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Loop Sys"
+                className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Email Address</label>
             <input
