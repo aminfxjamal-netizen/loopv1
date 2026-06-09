@@ -1,175 +1,244 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
-import { Cpu, ShieldAlert, ArrowRight, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-export default function EnhancedSignupPage() {
+export default function LoopSignupPage() {
   const router = useRouter();
+  
+  // Form Fields State
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [companyName, setCompanyName] = useState('');
-  const [statusLog, setStatusLog] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // UI Utilities State
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const handleRegisterPipeline = async (e: React.FormEvent) => {
+  // Fade-in on page load trigger
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Password Strength Calculator
+  const getPasswordStrength = () => {
+    if (!password) return { label: '', color: 'bg-transparent', width: 'w-0' };
+    if (password.length < 6) return { label: 'Weak', color: 'bg-red-500', width: 'w-1/3' };
+    if (password.length < 10) return { label: 'Medium', color: 'bg-yellow-500', width: 'w-2/3' };
+    return { label: 'Strong', color: 'bg-[#7C3AED]', width: 'w-full' };
+  };
+
+  const strength = getPasswordStrength();
+
+  // Form Submission & Validation Logic
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setStatusLog('Initializing authentication register packet...');
+    setErrorMessage('');
 
-    try {
-      // 1. Fire registration request to Supabase Auth Handler
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (authError) throw authError;
-
-      if (authData?.user) {
-        setStatusLog('Auth record verified. Provisioning internal database container with metadata...');
-
-        // 2. Provision the custom user profile with ALL metadata fields
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert([
-            {
-              user_id: authData.user.id,
-              display_name: displayName,
-              company_name: companyName,
-              plan_tier: 'free',
-              remaining_tokens: 1500000, // Allocating the 1.5M Evaluation Sandbox tokens
-              last_reset_date: new Date().toISOString(),
-            },
-          ]);
-
-        if (profileError) {
-          throw new Error(`Database instantiation failed: ${profileError.message}`);
-        }
-
-        setStatusLog('Registration successful. Redirecting to workspace console...');
-        router.push('/dashboard');
-      }
-
-    } catch (err: any) {
-      setStatusLog(`[REGISTRATION_REJECTION]: ${err.message || 'Handshake failed.'}`);
-    } finally {
-      setLoading(false);
+    if (!fullName || !email || !password || !confirmPassword) {
+      setErrorMessage('All fields are required.');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    // Simulated network processing latency to demonstrate professional loading state
+    setTimeout(() => {
+      setIsSubmitting(false);
+      router.push('/workspace');
+    }, 1500);
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-[#E4E4E7] font-mono flex items-center justify-center p-4 relative selection:bg-violet-500/30">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f1f10_1px,transparent_1px),linear-gradient(to_bottom,#1f1f1f10_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
-
-      <div className="max-w-md w-full bg-[#030303] border border-[#18181B] rounded-xl p-8 shadow-2xl space-y-6 relative z-10">
-        
-        {/* BRAND IDENTITY NODE */}
-        <div className="space-y-2 text-center">
-          <div className="w-10 h-10 bg-violet-500/10 border border-violet-500/20 text-violet-400 rounded-lg flex items-center justify-center mx-auto mb-3 shadow-[0_0_15px_rgba(139,92,246,0.1)]">
-            <Cpu size={20} />
+    <div 
+      className={`min-h-screen bg-[#09090B] text-[#FFFFFF] font-sans flex flex-col items-center justify-center p-6 transition-opacity duration-700 ease-out select-none ${
+        mounted ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
+      {/* Logo Section */}
+      <div className="text-center space-y-2 mb-8">
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-6 h-6 rounded bg-[#FFFFFF] flex items-center justify-center">
+            <div className="w-2.5 h-2.5 rounded-sm bg-[#09090B]" />
           </div>
-          <h2 className="text-sm font-black uppercase tracking-widest text-white">Create Operator Account</h2>
-          <p className="text-[10px] text-[#52525B]">PROVISION A NEW LOOP ENGINE RUNTIME NODE</p>
+          <span className="text-xl font-bold tracking-tight text-[#FFFFFF]">Loop</span>
+        </div>
+        <p className="text-xs text-[#A1A1AA] tracking-wide font-medium">
+          The AI Workspace for Modern Businesses
+        </p>
+      </div>
+
+      {/* Signup Card */}
+      <div className="w-full max-w-md bg-[#18181B] border border-[#27272A] rounded-xl p-8 shadow-2xl space-y-6">
+        <div className="space-y-1.5 text-center">
+          <h1 className="text-xl font-bold text-[#FFFFFF]">Create your account</h1>
+          <p className="text-xs text-[#A1A1AA]">
+            Start your 14-day free trial. No credit card required.
+          </p>
         </div>
 
-        {/* INPUT DISPATCH FORM */}
-        <form onSubmit={handleRegisterPipeline} className="space-y-4">
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Display Name</label>
-              <input
-                type="text"
-                required
-                disabled={loading}
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Amin"
-                className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
-              />
-            </div>
-            
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Company</label>
-              <input
-                type="text"
-                required
-                disabled={loading}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Loop Sys"
-                className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
-              />
-            </div>
+        {errorMessage && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400 font-medium">
+            {errorMessage}
+          </div>
+        )}
+
+        <form onSubmit={handleSignupSubmit} className="space-y-4">
+          {/* Full Name */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-[#A1A1AA] uppercase tracking-wider">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="John Doe"
+              className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded text-sm text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] transition"
+              disabled={isSubmitting}
+            />
           </div>
 
+          {/* Work Email */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Email Address</label>
+            <label className="text-[11px] font-semibold text-[#A1A1AA] uppercase tracking-wider">
+              Work Email
+            </label>
             <input
               type="email"
-              required
-              disabled={loading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="operator@domain.internal"
-              className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
+              placeholder="name@company.com"
+              className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded text-sm text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] transition"
+              disabled={isSubmitting}
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-bold text-[#A1A1AA] tracking-wider">Security Access Key</label>
+          {/* Password */}
+          <div className="space-y-1.5 relative">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-[#A1A1AA] uppercase tracking-wider">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-[11px] font-medium text-[#A1A1AA] hover:text-[#FFFFFF] transition focus:outline-none"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <input
-              type="password"
-              required
-              disabled={loading}
+              type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full h-10 bg-[#09090B] border border-[#18181B] focus:border-[#27272A] rounded-md px-4 text-xs outline-none text-white transition placeholder-[#52525B]"
+              placeholder="••••••••"
+              className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded text-sm text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] transition"
+              disabled={isSubmitting}
+            />
+
+            {/* Password Strength Indicator */}
+            {password && (
+              <div className="pt-2 space-y-1">
+                <div className="w-full h-1 bg-[#09090B] rounded-full overflow-hidden">
+                  <div className={`h-full ${strength.color} ${strength.width} transition-all duration-300`} />
+                </div>
+                <div className="text-[10px] text-right text-[#A1A1AA] font-medium">
+                  Password Strength: <span className="text-[#FFFFFF]">{strength.label}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-[#A1A1AA] uppercase tracking-wider">
+              Confirm Password
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded text-sm text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] transition"
+              disabled={isSubmitting}
             />
           </div>
 
+          {/* Primary CTA */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full h-10 bg-white hover:bg-[#E4E4E7] text-black text-[11px] font-black uppercase rounded-md transition flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer mt-2"
+            disabled={isSubmitting}
+            className="w-full h-10 mt-2 bg-[#7C3AED] hover:bg-[#8B5CF6] text-[#FFFFFF] text-sm font-medium rounded transition active:scale-[0.99] flex items-center justify-center focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           >
-            {loading ? (
-              <Loader2 size={14} className="animate-spin" />
+            {isSubmitting ? (
+              <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
             ) : (
-              <>
-                Initialize Sandbox
-                <ArrowRight size={14} />
-              </>
+              'Start Free Trial'
             )}
           </button>
         </form>
 
-        {/* FEEDBACK MONITOR CONSOLE */}
-        {statusLog && (
-          <div className="bg-[#09090B] border border-[#18181B] p-3 rounded-md text-[10px] text-[#A1A1AA] flex items-start gap-2 animate-fadeIn">
-            <ShieldAlert size={14} className="text-violet-400 flex-shrink-0 mt-0.5" />
-            <p className="leading-relaxed font-mono">{statusLog}</p>
-          </div>
-        )}
-
-        {/* ROUTING FOOTNOTE */}
-        <div className="text-center pt-2 border-t border-[#18181B]">
-          <p className="text-[10px] text-[#52525B]">
-            Existing system operator?{' '}
-            <Link href="/login" className="text-[#A1A1AA] hover:text-white underline underline-offset-2 transition font-bold">
-              Access Console
-            </Link>
-          </p>
+        {/* Alternative Sign Up Divider */}
+        <div className="flex items-center my-4 text-[11px] text-[#52525B] font-medium uppercase tracking-widest">
+          <div className="flex-1 h-[1px] bg-[#27272A]" />
+          <span className="px-3">or continue with</span>
+          <div className="flex-1 h-[1px] bg-[#27272A]" />
         </div>
 
+        {/* Third-Party Authentication Providers */}
+        <div className="grid grid-cols-2 gap-3">
+          <button 
+            type="button"
+            className="h-10 border border-[#27272A] bg-[#09090B] hover:border-[#52525B] text-xs font-medium rounded transition flex items-center justify-center gap-2 focus:outline-none"
+          >
+            Google
+          </button>
+          <button 
+            type="button"
+            className="h-10 border border-[#27272A] bg-[#09090B] hover:border-[#52525B] text-xs font-medium rounded transition flex items-center justify-center gap-2 focus:outline-none"
+          >
+            Microsoft
+          </button>
+        </div>
+
+        {/* Login Link */}
+        <div className="text-center text-xs text-[#A1A1AA] pt-2">
+          Already have an account?{' '}
+          <Link href="/login" className="text-[#7C3AED] hover:text-[#8B5CF6] font-medium transition">
+            Sign in
+          </Link>
+        </div>
+      </div>
+
+      {/* Trust Section */}
+      <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-xs text-[#A1A1AA] font-medium">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#7C3AED]">✓</span> 14-Day Free Trial
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#7C3AED]">✓</span> No Credit Card Required
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[#7C3AED]">✓</span> Cancel Anytime
+        </div>
       </div>
     </div>
   );
