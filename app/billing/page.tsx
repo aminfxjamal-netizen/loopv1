@@ -1,178 +1,172 @@
 'use client';
 
 import { useState } from 'react';
-import { ShieldCheck, CreditCard, Lock, ArrowRight, Check, Menu, X } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
-export default function BillingPaymentPage() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+export default function BillingPage() {
+  const router = useRouter();
   
-  // Available plans to make it dynamic
-  const planOptions = {
-    basic: { name: 'Basic Tier', price: 9, description: 'Billed monthly' },
-    pro: { name: 'Professional Pro Package', price: 29, description: 'Billed monthly' }
-  };
-
-  // State for user selection (defaults to basic so it doesn't scare them)
-  const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro'>('basic');
+  // Interface state configurations
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   
-  // Form States
+  // Mock form element inputs
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
   const [nameOnCard, setNameOnCard] = useState('');
 
-  const currentPlan = planOptions[selectedPlan];
-
-  const handlePayment = async (e: React.FormEvent) => {
+  const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsProcessing(true);
-    setTimeout(() => setIsProcessing(false), 1500);
+    setLoading(true);
+
+    // Simulate standard payment processor verification delay
+    setTimeout(() => {
+      setLoading(false);
+      setSuccess(true);
+      
+      // Route user to final workspace panel per blueprint schema
+      setTimeout(() => {
+        router.push('/workspace');
+      }, 1500);
+    }, 2000);
   };
 
   return (
-    <main className="min-h-screen bg-[#FAFAFA] text-[#121212] font-sans antialiased overflow-x-hidden flex flex-col relative">
-      
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#E5E7EB_1px,transparent_1px),linear-gradient(to_bottom,#E5E7EB_1px,transparent_1px)] bg-[size:24px_24px] opacity-20 pointer-events-none z-0" />
-
-      <header className="border-b border-[#EEEEEE] bg-white sticky top-0 w-full h-16 z-50 flex-shrink-0">
-        <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold tracking-tight text-[#121212] flex items-center gap-2 no-underline">
-            <span className="w-5 h-5 bg-violet-600 rounded-md flex items-center justify-center text-white text-xs font-black">L</span>
-            Loop
-          </Link>
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111827] font-sans antialiased flex flex-col justify-between p-6 md:p-8">
+      {/* HEADER SECTION */}
+      <header className="max-w-7xl w-full mx-auto flex items-center justify-between">
+        <div 
+          onClick={() => router.push('/')} 
+          className="flex items-center gap-2.5 cursor-pointer select-none group"
+        >
+          <div className="w-6 h-6 rounded-lg bg-[#2563EB] flex items-center justify-center transition shadow-sm group-hover:bg-[#1D4ED8]">
+            <div className="w-2.5 h-2.5 rounded-sm bg-white" />
+          </div>
+          <span className="text-base font-extrabold tracking-tight text-[#111827]">Loop</span>
         </div>
       </header>
 
-      <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 grid md:grid-cols-12 gap-8 relative z-10 items-start">
+      {/* BILLING MODULE WORKSPACE */}
+      <main className="flex-1 max-w-4xl w-full mx-auto my-12 grid grid-cols-1 md:grid-cols-12 gap-8 items-center justify-center">
         
-        {/* Left Side: Secure Checkout Payment Form */}
-        <div className="md:col-span-7 bg-white border border-gray-200 rounded-xl p-6 sm:p-8 shadow-sm text-left">
-          <div className="mb-6 border-b border-gray-100 pb-4">
-            <h1 className="text-lg font-bold text-gray-950 tracking-tight">Checkout</h1>
-            <p className="text-xs text-gray-400">Choose your tier and input your payment details below.</p>
+        {/* LEFT COLUMN: SECURE PAYMENT FORM */}
+        <div className="md:col-span-7 bg-white border border-[#E5E7EB] rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
+          <div className="space-y-1">
+            <h1 className="text-xl font-black tracking-tight text-[#111827]">Secure Checkout Portal</h1>
+            <p className="text-xs text-[#6B7280] font-medium">Configure commercial billing architecture details below.</p>
           </div>
 
-          {/* Interactive Tier Selection Box */}
-          <div className="mb-6 space-y-2">
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider font-mono">Select Your Plan Container</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedPlan('basic')}
-                className={`p-3 border text-left rounded-xl transition visual-fix ${selectedPlan === 'basic' ? 'border-violet-600 bg-violet-50/40 ring-1 ring-violet-600' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-              >
-                <div className="font-bold text-xs">Basic Tier</div>
-                <div className="text-sm font-extrabold mt-1">$9<span className="text-[10px] font-normal text-gray-400">/mo</span></div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedPlan('pro')}
-                className={`p-3 border text-left rounded-xl transition visual-fix ${selectedPlan === 'pro' ? 'border-violet-600 bg-violet-50/40 ring-1 ring-violet-600' : 'border-gray-200 hover:border-gray-300 bg-white'}`}
-              >
-                <div className="font-bold text-xs">Professional Pro</div>
-                <div className="text-sm font-extrabold mt-1">$29<span className="text-[10px] font-normal text-gray-400">/mo</span></div>
-              </button>
+          {success ? (
+            <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-xl text-center space-y-2 animate-fade-in">
+              <div className="text-2xl">✓</div>
+              <h3 className="text-xs font-bold text-emerald-800">Payment Authentication Confirmed</h3>
+              <p className="text-[11px] text-emerald-600 font-medium">Provisioning compute infrastructure resources. Accessing workspace...</p>
             </div>
-          </div>
+          ) : (
+            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Cardholder Identity</label>
+                <input
+                  type="text"
+                  required
+                  value={nameOnCard}
+                  onChange={(e) => setNameOnCard(e.target.value)}
+                  placeholder="Alex Netizen"
+                  className="w-full h-10 px-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] focus:outline-none focus:border-[#2563EB] focus:bg-white transition"
+                />
+              </div>
 
-          <form onSubmit={handlePayment} className="space-y-4">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">Name on Card</label>
-              <input
-                type="text"
-                required
-                value={nameOnCard}
-                onChange={(e) => setNameOnCard(e.target.value)}
-                placeholder="Amin Fx Jamal"
-                className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">Card Number</label>
-              <div className="relative">
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Credit Card Credentials</label>
                 <input
                   type="text"
                   required
                   maxLength={19}
                   value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)}
-                  placeholder="4242  4242  4242  4242"
-                  className="w-full pl-10 pr-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
+                  placeholder="4111 2222 3333 4444"
+                  className="w-full h-10 px-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] focus:outline-none focus:border-[#2563EB] focus:bg-white transition"
                 />
-                <CreditCard size={14} className="absolute left-3.5 top-3 text-gray-400" />
               </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">Expiration Date</label>
-                <input
-                  type="text"
-                  required
-                  maxLength={5}
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                  placeholder="MM / YY"
-                  className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Expiration Parameters</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={5}
+                    value={expiry}
+                    onChange={(e) => setExpiry(e.target.value)}
+                    placeholder="MM/YY"
+                    className="w-full h-10 px-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] focus:outline-none focus:border-[#2563EB] focus:bg-white transition"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Security CVC</label>
+                  <input
+                    type="password"
+                    required
+                    maxLength={4}
+                    value={cvc}
+                    onChange={(e) => setCvc(e.target.value)}
+                    placeholder="•••"
+                    className="w-full h-10 px-3 bg-[#FAFAFA] border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] focus:outline-none focus:border-[#2563EB] focus:bg-white transition"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 font-mono">CVC</label>
-                <input
-                  type="password"
-                  required
-                  maxLength={4}
-                  value={cvc}
-                  onChange={(e) => setCvc(e.target.value)}
-                  placeholder="•••"
-                  className="w-full px-3 py-2 bg-[#FAFAFA] border border-gray-200 rounded-lg text-xs placeholder:text-gray-300 focus:outline-none focus:border-violet-600 focus:bg-white transition"
-                />
-              </div>
-            </div>
 
-            <div className="pt-4">
               <button
                 type="submit"
-                disabled={isProcessing}
-                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-lg text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-sm shadow-violet-600/10"
+                disabled={loading}
+                className="w-full h-10 bg-[#111827] hover:bg-black disabled:bg-[#9CA3AF] text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center justify-center mt-2"
               >
-                {isProcessing ? 'Processing Payment...' : `Pay $${currentPlan.price}.00`}
-                {!isProcessing && <ArrowRight size={13} />}
+                {loading ? (
+                  <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                ) : (
+                  'Authorize Secure Connection'
+                )}
               </button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
 
-        {/* Right Side: Dynamic Summary Panel */}
-        <div className="md:col-span-5 bg-white border border-gray-200 rounded-xl p-6 text-left shadow-sm">
-          <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider font-mono border-b border-gray-100 pb-3 mb-4">Summary</h2>
+        {/* RIGHT COLUMN: TRANSACTION STATEMENT BREAKDOWN */}
+        <div className="md:col-span-5 border border-[#E5E7EB] rounded-2xl p-6 bg-white space-y-4 self-start">
+          <h3 className="text-xs font-bold text-[#111827] uppercase tracking-wider">Transaction Summary</h3>
+          <div className="w-full h-px bg-[#F3F4F6]" />
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-xs font-bold text-gray-900">{currentPlan.name}</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">{currentPlan.description}</p>
-              </div>
-              <span className="text-sm font-extrabold text-gray-950">${currentPlan.price}.00</span>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-medium text-[#4B5563]">
+              <span>Selected Operating Node:</span>
+              <span className="font-bold text-[#111827]">Pro Workspace Tier</span>
             </div>
-
-            <div className="border-t border-gray-100 pt-3 space-y-2 text-xs">
-              <div className="flex justify-between text-gray-400">
-                <span>Setup Allocation Fee</span>
-                <span className="text-green-600 font-mono text-[10px] font-bold">FREE</span>
-              </div>
-              <div className="flex justify-between text-gray-950 font-bold border-t border-dashed border-gray-200 pt-2 text-sm">
-                <span>Total Due</span>
-                <span>${currentPlan.price}.00</span>
-              </div>
+            <div className="flex justify-between text-xs font-medium text-[#4B5563]">
+              <span>Compute Cycle Duration:</span>
+              <span>Monthly Allocation</span>
             </div>
           </div>
-        </div>
 
-      </div>
-    </main>
+          <div className="w-full h-px bg-[#F3F4F6]" />
+          
+          <div className="flex justify-between items-baseline pt-2">
+            <span className="text-xs font-bold text-[#111827]">Immediate Due:</span>
+            <span className="text-2xl font-black text-[#2563EB]">$79.00</span>
+          </div>
+
+          <p className="text-[10px] text-[#9CA3AF] font-medium leading-relaxed pt-2">
+            Transactions are shielded via deep asymmetric cryptographic pipelines. Cancel subscription parameters instantly anytime within dashboard settings.
+          </p>
+        </div>
+      </main>
+
+      {/* FOOTER SECTION */}
+      <footer className="max-w-7xl w-full mx-auto border-t border-[#F3F4F6] pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span className="text-[11px] font-medium text-[#9CA3AF]">
+          © {new Date().getFullYear()} Loop Technologies Inc. All parameters reserved.
+        </span>
+      </footer>
+    </div>
   );
 }
