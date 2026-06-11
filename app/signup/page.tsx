@@ -18,19 +18,19 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // Interface toggle states
+  // Interface micro-interaction states
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: 'Weak', color: 'bg-red-500' });
 
-  // Status tracking states
+  // Processing flow states
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Password strength logic analyzer
+  // Password structural integrity analyzer
   useEffect(() => {
     if (!password) {
-      setPasswordStrength({ score: 0, label: 'None', color: 'bg-[#27272A]' });
+      setPasswordStrength({ score: 0, label: 'None', color: 'bg-[#F3F4F6]' });
       return;
     }
     let score = 0;
@@ -54,7 +54,7 @@ export default function SignupPage() {
     setErrorMessage('');
     setSuccessMessage('');
 
-    // Field confirmations
+    // Pre-flight form validation parameter checks
     if (password !== confirmPassword) {
       setErrorMessage('Validation error: Password parameters do not match.');
       setLoading(false);
@@ -62,18 +62,19 @@ export default function SignupPage() {
     }
 
     if (password.length < 8) {
-      setErrorMessage('Security error: Password must be at least 8 characters.');
+      setErrorMessage('Security error: Password must be at least 8 characters long.');
       setLoading(false);
       return;
     }
 
     if (!supabase) {
-      setErrorMessage('Configuration error: Live credentials are missing.');
+      setErrorMessage('Configuration error: Live database credentials are missing.');
       setLoading(false);
       return;
     }
 
     try {
+      // Execute account creation directly inside Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -87,92 +88,99 @@ export default function SignupPage() {
       if (error) {
         setErrorMessage(error.message);
       } else if (data?.user) {
-        setSuccessMessage('Account established successfully. Accessing plan tiers...');
+        setSuccessMessage('Account established successfully. Forwarding to plans configuration...');
         
-        // Link connected to pricing funnel layout
+        // Link connected to pricing funnel layout view per parameters instructions
         setTimeout(() => {
           router.push('/pricing');
         }, 1200);
       }
     } catch (err: any) {
-      setErrorMessage('An unexpected validation timeout occurred.');
+      setErrorMessage('An unexpected database verification timeout occurred.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-[#FFFFFF] font-sans antialiased flex flex-col justify-between p-4 sm:p-6 md:p-8 selection:bg-[#7C3AED]/30 selection:text-white animate-fade-in">
+    <div className="min-h-screen bg-[#FFFFFF] text-[#111827] font-sans antialiased flex flex-col justify-between p-4 sm:p-6 md:p-8 selection:bg-[#2563EB]/10 transition-colors duration-300">
       
-      {/* LOGO / BRANDING SECTION */}
-      <header className="max-w-7xl w-full mx-auto flex items-center justify-start pt-2">
+      {/* NAVIGATION HEADER BAR */}
+      <header className="max-w-7xl w-full mx-auto flex items-center justify-between border-b border-gray-50 pb-4">
         <div 
           onClick={() => router.push('/')} 
-          className="flex items-center gap-3 cursor-pointer select-none group"
+          className="flex items-center gap-2.5 cursor-pointer select-none group"
         >
-          <div className="w-7 h-7 rounded-lg bg-[#7C3AED] flex items-center justify-center transition-all duration-300 shadow-[0_0_15px_rgba(124,58,237,0.3)] group-hover:bg-[#8B5CF6] group-hover:scale-105">
-            <div className="w-3 h-3 rounded-sm bg-[#09090B] rotate-45 transition-transform duration-500 group-hover:rotate-90" />
+          {/* Loop Minimal Premium Blue Icon Node */}
+          <div className="w-6 h-6 rounded-lg bg-[#2563EB] flex items-center justify-center transition-all duration-300 shadow-[0_4px_12px_rgba(37,99,235,0.2)] group-hover:bg-[#1D4ED8]">
+            <div className="w-2.5 h-2.5 rounded-sm bg-white" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-black tracking-wider text-[#FFFFFF] uppercase">Loop</span>
-            <span className="text-[10px] text-[#A1A1AA] font-medium tracking-tight">The AI Workspace for Modern Businesses</span>
-          </div>
+          <span className="text-base font-extrabold tracking-tight text-[#111827]">Loop</span>
         </div>
+
+        <button 
+          onClick={() => router.push('/login')}
+          className="h-9 px-4 rounded-xl border border-[#E5E7EB] bg-white text-xs font-bold text-[#111827] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all shadow-sm"
+        >
+          Sign In
+        </button>
       </header>
 
-      {/* SIGNUP CONTAINER CARD */}
-      <main className="flex-1 flex flex-col items-center justify-center max-w-md w-full mx-auto my-8 space-y-6">
-        <div className="w-full bg-[#18181B] border border-[#27272A] rounded-2xl p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-300 hover:border-[#27272A]/80 space-y-5">
+      {/* CORE PLATFORM SIGNUP SECTION */}
+      <main className="flex-1 flex flex-col items-center justify-center max-w-md w-full mx-auto my-10 space-y-6 animate-fade-in">
+        <div className="w-full space-y-6">
           
-          <div className="space-y-1.5 text-center">
-            <h1 className="text-xl font-bold tracking-tight text-[#FFFFFF]">Create your account</h1>
-            <p className="text-xs text-[#A1A1AA] font-medium">
-              Start your 14-day free trial. No credit card required.
+          {/* Section Headings */}
+          <div className="space-y-2 text-center">
+            <h1 className="text-2xl font-black tracking-tight text-[#111827]">Create Your Account</h1>
+            <p className="text-xs text-[#6B7280] font-medium leading-relaxed">
+              Start your 14-day free trial and explore your AI workspace.
+              <span className="block text-[11px] font-bold text-[#2563EB] mt-1">No credit card required.</span>
             </p>
           </div>
 
-          <form onSubmit={handleSignupSubmit} className="space-y-3.5">
-            {/* Status Feedback Banners */}
+          <form onSubmit={handleSignupSubmit} className="space-y-4">
+            {/* Status Notification Alerts */}
             {errorMessage && (
-              <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl text-[11px] font-semibold text-red-400 transition-all duration-200">
+              <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-xs font-semibold text-red-600">
                 ⚠️ {errorMessage}
               </div>
             )}
             {successMessage && (
-              <div className="p-3 bg-emerald-950/40 border border-emerald-900/50 rounded-xl text-[11px] font-semibold text-emerald-400 transition-all duration-200">
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs font-semibold text-emerald-600">
                 ✓ {successMessage}
               </div>
             )}
 
-            {/* Name Input Field */}
+            {/* Full Name Input Parameter */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[#A1A1AA] tracking-wider uppercase">Full Name</label>
+              <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Full Name</label>
               <input
                 type="text"
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Alex Netizen"
-                className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded-xl text-xs font-medium text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all duration-200"
+                className="w-full h-11 px-3 bg-white border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/10 transition-all"
               />
             </div>
 
-            {/* Email Input Field */}
+            {/* Email Input Parameter */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[#A1A1AA] tracking-wider uppercase">Work Email</label>
+              <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Email Address</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded-xl text-xs font-medium text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all duration-200"
+                className="w-full h-11 px-3 bg-white border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/10 transition-all"
               />
             </div>
 
-            {/* Password Input Field */}
+            {/* Password Input Parameter */}
             <div className="space-y-1 relative">
-              <label className="text-[10px] font-bold text-[#A1A1AA] tracking-wider uppercase">Password</label>
+              <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -180,120 +188,123 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full h-10 pl-3 pr-10 bg-[#09090B] border border-[#27272A] rounded-xl text-xs font-medium text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all duration-200"
+                  className="w-full h-11 pl-3 pr-12 bg-white border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/10 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#A1A1AA] hover:text-[#FFFFFF] transition-colors select-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#6B7280] hover:text-[#111827] transition-colors select-none"
                 >
                   {showPassword ? 'HIDE' : 'SHOW'}
                 </button>
               </div>
 
-              {/* Minimal Password Strength Indicator */}
+              {/* Real-time Password Strength Visualization Grid */}
               {password && (
-                <div className="pt-1.5 space-y-1 animate-fade-in">
-                  <div className="w-full h-1 bg-[#27272A] rounded-full overflow-hidden">
+                <div className="pt-1.5 space-y-1">
+                  <div className="w-full h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${passwordStrength.color} transition-all duration-300`} 
                       style={{ width: `${passwordStrength.score}%` }}
                     />
                   </div>
-                  <div className="text-[9px] font-bold text-[#A1A1AA] flex justify-between tracking-wide uppercase">
-                    <span>Security Strength</span>
-                    <span className="text-[#FFFFFF]">{passwordStrength.label}</span>
+                  <div className="text-[9px] font-bold text-[#6B7280] flex justify-between tracking-wide uppercase">
+                    <span>Security strength</span>
+                    <span>{passwordStrength.label}</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Confirm Password Field */}
+            {/* Confirm Password Input Parameter */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[#A1A1AA] tracking-wider uppercase">Confirm Password</label>
+              <label className="text-[11px] font-bold text-[#4B5563] tracking-wide uppercase">Confirm Password</label>
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full h-10 px-3 bg-[#09090B] border border-[#27272A] rounded-xl text-xs font-medium text-[#FFFFFF] placeholder-[#52525B] focus:outline-none focus:border-[#7C3AED] focus:ring-1 focus:ring-[#7C3AED]/20 transition-all duration-200"
+                className="w-full h-11 px-3 bg-white border border-[#E5E7EB] rounded-xl text-xs font-medium text-[#111827] placeholder-[#9CA3AF] focus:outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB]/10 transition-all"
               />
             </div>
 
-            {/* Submit CTA Button */}
+            {/* Primary Blue Action Submit CTA */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-10 bg-[#7C3AED] hover:bg-[#8B5CF6] disabled:bg-[#7C3AED]/50 text-white text-xs font-bold rounded-xl shadow-md transition-all duration-200 flex items-center justify-center pt-0.5 mt-4 hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full h-[56px] rounded-[14px] bg-[#2563EB] hover:bg-[#1D4ED8] disabled:bg-[#2563EB]/60 text-white text-xs font-semibold shadow-[0_10px_30px_rgba(37,99,235,0.25)] hover:shadow-[0_10px_35px_rgba(37,99,235,0.35)] transition-all duration-200 flex items-center justify-center mt-6 hover:scale-[1.005] active:scale-[0.995]"
             >
               {loading ? (
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />
               ) : (
                 'Start Free Trial'
               )}
             </button>
           </form>
 
-          {/* Alternative Signup Divider */}
-          <div className="relative flex py-0.5 items-center">
-            <div className="flex-grow border-t border-[#27272A]"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-[#52525B] font-bold uppercase tracking-widest">or continue with</span>
-            <div className="flex-grow border-t border-[#27272A]"></div>
+          {/* Alternative Signup Section Divider */}
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-[#F3F4F6]"></div>
+            <span className="flex-shrink mx-4 text-[10px] text-[#9CA3AF] font-bold uppercase tracking-widest">or continue with</span>
+            <div className="flex-grow border-t border-[#F3F4F6]"></div>
           </div>
 
-          {/* OAuth Buttons */}
+          {/* Third Party OAuth Networks */}
           <div className="grid grid-cols-2 gap-3">
             <button 
               type="button"
-              className="h-9 px-3 rounded-xl border border-[#27272A] bg-[#09090B] text-[11px] font-bold text-[#FFFFFF] hover:bg-[#18181B] hover:border-[#52525B] transition-all duration-200 flex items-center justify-center gap-2"
+              className="h-10 px-3 rounded-xl border border-[#E5E7EB] bg-white text-xs font-bold text-[#4B5563] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all flex items-center justify-center gap-2 shadow-sm"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.113-5.136 4.113-3.41 0-6.165-2.755-6.165-6.165 0-3.41 2.756-6.165 6.165-6.165 1.48 0 2.83.52 3.89 1.39l3.14-3.14C18.88 1.91 15.77 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c5.84 0 10.74-4.25 11.24-10.05v-3.14h-11.24z"/>
               </svg>
               Google
             </button>
             <button 
               type="button"
-              className="h-9 px-3 rounded-xl border border-[#27272A] bg-[#09090B] text-[11px] font-bold text-[#FFFFFF] hover:bg-[#18181B] hover:border-[#52525B] transition-all duration-200 flex items-center justify-center gap-2"
+              className="h-10 px-3 rounded-xl border border-[#E5E7EB] bg-white text-xs font-bold text-[#4B5563] hover:bg-[#F9FAFB] hover:border-[#D1D5DB] transition-all flex items-center justify-center gap-2 shadow-sm"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 23 23">
-                <path fill="currentColor" d="M0 0h11v11H0zM12 0h11v11H12zM0 12h11v11H0zM12 12h11v11H12z"/>
+                <path fill="#F25022" d="M0 0h11v11H0z"/>
+                <path fill="#7FBA00" d="M12 0h11v11H12z"/>
+                <path fill="#01A6F0" d="M0 12h11v11H0z"/>
+                <path fill="#FFB900" d="M12 12h11v11H12z"/>
               </svg>
               Microsoft
             </button>
           </div>
 
-          {/* Login Link */}
-          <div className="text-center pt-1.5">
-            <p className="text-xs text-[#A1A1AA] font-medium">
+          {/* Bottom Redirect Node */}
+          <div className="text-center pt-2">
+            <p className="text-xs text-[#6B7280] font-medium">
               Already have an account?{' '}
               <span 
                 onClick={() => router.push('/login')}
-                className="text-[#7C3AED] hover:text-[#8B5CF6] font-bold cursor-pointer hover:underline transition-colors ml-0.5"
+                className="text-[#2563EB] hover:text-[#1D4ED8] font-bold cursor-pointer hover:underline transition-colors ml-0.5"
               >
-                Sign in
+                Sign In
               </span>
             </p>
           </div>
         </div>
 
-        {/* TRUST ACCREDITATION SECTIONS */}
-        <div className="flex items-center justify-center gap-5 text-[10px] font-bold text-[#52525B] tracking-wider uppercase select-none">
-          <span className="flex items-center gap-1"><span className="text-[#7C3AED]">✓</span> 14-Day Free Trial</span>
-          <span className="flex items-center gap-1"><span className="text-[#7C3AED]">✓</span> No Credit Card Required</span>
-          <span className="flex items-center gap-1"><span className="text-[#7C3AED]">✓</span> Cancel Anytime</span>
+        {/* VERIFIED OPERATING PARAMETERS ACCREDITATION */}
+        <div className="w-full grid grid-cols-2 gap-x-4 gap-y-2 pt-4 border-t border-[#F3F4F6] text-[11px] font-semibold text-[#6B7280] select-none">
+          <div className="flex items-center gap-1.5 justify-start"><span className="text-[#2563EB] text-xs">✓</span> 14-Day Free Trial</div>
+          <div className="flex items-center gap-1.5 justify-start"><span className="text-[#2563EB] text-xs">✓</span> No Credit Card Required</div>
+          <div className="flex items-center gap-1.5 justify-start"><span className="text-[#2563EB] text-xs">✓</span> Secure Authentication</div>
+          <div className="flex items-center gap-1.5 justify-start"><span className="text-[#2563EB] text-xs">✓</span> Cancel Anytime</div>
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer className="max-w-7xl w-full mx-auto border-t border-[#18181B] pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <span className="text-[11px] font-medium text-[#52525B]">
-          © {new Date().getFullYear()} Loop Technologies Inc. All configurations sandboxed.
-        </span>
+      {/* FOOTER METADATA COMPLIANCE */}
+      <footer className="max-w-7xl w-full mx-auto border-t border-[#F3F4F6] pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-medium text-[#9CA3AF]">
+        <span>© {new Date().getFullYear()} Loop Technologies Inc. All parameters reserved.</span>
+        <div className="flex items-center gap-5 text-[#6B7280] font-semibold">
+          <span className="hover:text-[#111827] cursor-pointer transition-colors">Privacy Policy</span>
+          <span className="hover:text-[#111827] cursor-pointer transition-colors">Terms of Service</span>
+        </div>
       </footer>
     </div>
   );
