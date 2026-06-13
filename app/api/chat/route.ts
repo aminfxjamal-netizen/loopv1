@@ -1,4 +1,3 @@
-// app/api/chat/route.ts
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -12,7 +11,7 @@ export async function POST(req: Request) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-specdec',
+        model: 'llama-3.3-70b-versatile',
         messages: messages,
       }),
     });
@@ -20,6 +19,6 @@ export async function POST(req: Request) {
     const data = await response.json();
     return NextResponse.json({ reply: data.choices[0]?.message?.content });
   } catch (error) {
-    return NextResponse.json({ reply: "I'm having trouble connecting to the brain." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to connect to AI" }, { status: 500 });
   }
 }
