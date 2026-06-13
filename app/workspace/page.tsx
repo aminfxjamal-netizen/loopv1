@@ -165,21 +165,32 @@ export default function LoopWorkspace() {
 
   return (
     <div className="flex h-screen w-screen bg-[#FFFFFF] font-sans antialiased text-[#111827] overflow-hidden">
-      {/* Sidebar - unchanged */}
-      <aside className="w-64 border-r border-[#E5E7EB] flex flex-col justify-between bg-[#FFFFFF] p-4 shrink-0 select-none">
-        <div className="flex flex-col space-y-6">
-          <div className="flex items-center space-x-2.5 px-2">
+      
+      {/* ================== REDESIGNED SIDEBAR ================== */}
+      <aside className="w-64 border-r border-[#E5E7EB] flex flex-col justify-between bg-[#FFFFFF] shrink-0 select-none h-full">
+        
+        {/* TOP PANEL: LOOP HEADER */}
+        <div className="p-4 border-b border-[#E5E7EB]">
+          <div className="flex items-center space-x-2.5 px-1">
             <div className="h-6 w-6 rounded-md bg-[#2563EB] flex items-center justify-center">
               <span className="text-[#FFFFFF] text-xs font-black">L</span>
             </div>
             <span className="text-md font-semibold tracking-tight">Loop</span>
           </div>
+        </div>
 
-          <nav className="space-y-1">
+        {/* MIDDLE PANEL: NAVIGATION & INTEGRATIONS */}
+        <div className="flex-1 flex flex-col p-4 overflow-y-auto">
+          {/* AI Chat Primary Layer */}
+          <div className="mb-6">
             <button className="w-full flex items-center space-x-2.5 px-2.5 py-1.5 text-sm rounded-md font-medium bg-[#F3F4F6] text-[#2563EB]">
               <MessageSquareCode className="h-4 w-4" />
               <span>AI Chat</span>
             </button>
+          </div>
+
+          {/* Integrated Tooling Pathways Layer */}
+          <nav className="space-y-1">
             <button onClick={() => handleConnectTool('gmail')} className="w-full flex items-center justify-between px-2.5 py-1.5 text-sm rounded-md font-medium text-[#4B5563] hover:bg-[#F9FAFB] transition-colors">
               <div className="flex items-center space-x-2.5"><Mail className="h-4 w-4" /><span>Email</span></div>
               <span className={`h-2 w-2 rounded-full ${isGmailConnected ? 'bg-emerald-500' : 'bg-gray-300'}`} />
@@ -195,8 +206,9 @@ export default function LoopWorkspace() {
           </nav>
         </div>
 
-        {/* Billing */}
-        <div className="mt-auto pt-4 border-t border-[#E5E7EB]">
+        {/* BOTTOM PANEL: BILLING & SETTINGS CONTROL */}
+        <div className="p-4 border-t border-[#E5E7EB] flex flex-col space-y-3 bg-[#FFFFFF]">
+          {/* Dynamic Billing Node */}
           {currentPlan === 'Free Trial' && (
             <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50">
               <div className="flex items-center space-x-2 text-amber-800">
@@ -212,6 +224,12 @@ export default function LoopWorkspace() {
               </button>
             </div>
           )}
+
+          {/* System Workspace Settings */}
+          <button className="w-full flex items-center space-x-2.5 px-2.5 py-1.5 text-sm rounded-md font-medium text-[#4B5563] hover:bg-[#F9FAFB] transition-colors">
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
         </div>
       </aside>
 
