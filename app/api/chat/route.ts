@@ -1,3 +1,4 @@
+// app/api/chat/route.ts
 import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
@@ -12,13 +13,13 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-specdec',
-        messages: messages, // Now sending the full array for "Brain" context
+        messages: messages,
       }),
     });
 
     const data = await response.json();
     return NextResponse.json({ reply: data.choices[0]?.message?.content });
   } catch (error) {
-    return NextResponse.json({ reply: "I'm having trouble thinking. Please try again." }, { status: 500 });
+    return NextResponse.json({ reply: "I'm having trouble connecting to the brain." }, { status: 500 });
   }
 }
