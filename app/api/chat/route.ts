@@ -4,23 +4,22 @@ import { NextResponse } from "next/server";
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return NextResponse.json({ error: "DEBUG: GEMINI_API_KEY is missing on server" }, { status: 500 });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
     const lastMessage = messages[messages.length - 1].content;
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-    
-    // We use the 'gemini-1.5-flash' model
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: "You are Loop, a premium AI Operating System. Your tone is calm, intelligent, and professional. Never mention you are an AI. Provide direct, helpful, and concise responses."
-    });
-
     const result = await model.generateContent(lastMessage);
     const response = await result.response;
-    const text = response.text();
 
-    return NextResponse.json({ reply: text });
-  } catch (error) {
-    console.error("Loop API Error:", error);
-    return NextResponse.json({ error: "Failed to connect to the brain." }, { status: 500 });
+    return NextResponse.json({ reply: response.text() });
+  } catch (error: any) {
+    // This will now send the EXACT error message to your browser screen
+    return NextResponse.json({ error: "DEBUG ERROR: " + error.message }, { status: 500 });
   }
 }
