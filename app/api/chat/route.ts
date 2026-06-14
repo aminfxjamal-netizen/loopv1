@@ -5,9 +5,7 @@ export async function POST(req: Request) {
     const { messages } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "API Key missing" }, { status: 500 });
-    }
+    if (!apiKey) return NextResponse.json({ error: "API Key missing in Vercel settings" }, { status: 500 });
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -21,13 +19,10 @@ export async function POST(req: Request) {
     );
 
     const data = await response.json();
-    
-    if (!response.ok) {
-      return NextResponse.json({ error: data.error.message }, { status: 500 });
-    }
+    if (!response.ok) return NextResponse.json({ error: data.error?.message || "Gemini API rejected request" }, { status: 500 });
 
     return NextResponse.json({ reply: data.candidates[0].content.parts[0].text });
-  } catch (error) {
-    return NextResponse.json({ error: "System error" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
