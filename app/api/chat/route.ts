@@ -5,20 +5,20 @@ export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
 
-    // 1. Safety Check: Ensure the key exists before connecting
+    // Safety Check
     if (!process.env.DEEPSEEK_API_KEY) {
       return NextResponse.json({ error: "DEEPSEEK_API_KEY is missing on server" }, { status: 500 });
     }
 
-    // 2. Initialize inside the function so it doesn't crash the Vercel build
+    // Connect to DeepSeek
     const openai = new OpenAI({
       baseURL: 'https://api.deepseek.com',
       apiKey: process.env.DEEPSEEK_API_KEY,
     });
 
-    // 3. Call the DeepSeek API
+    // Call the V4 Flash Model
     const completion = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash", // <-- THIS IS THE ONLY LINE THAT CHANGED
       messages: [
         { 
           role: "system", 
