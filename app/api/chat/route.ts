@@ -1,26 +1,47 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-    const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "DEBUG: GEMINI_API_KEY is missing on server" }, { status: 500 });
+    // 1. Safety Check: Ensure the key exists before connecting
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return NextResponse.json({ error: "DEEPSEEK_API_KEY is missing on server" }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+    // 2. Initialize inside the function so it doesn't crash the Vercel build
+    const openai = new OpenAI({
+      baseURL: 'https://api.deepseek.com',
+      apiKey: process.env.DEEPSEEK_API_KEY,
+    });
 
+    // 3. Call the DeepSeek API
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-chat",
+      messages: [
+        { 
+          role: "system", 
+          content: `
+            You are Loop, a premium and highly organized AI OS assistant. 
+            
+            CRITICAL FORMATTING RULES FOR READABILITY:
+            1. Use double line breaks (blank lines) between EVERY paragraph to create clean breathing room.
+            2. Break complex information down into clearly labeled sections using Markdown headers (e.g., ## Section Title).
+            3. Use bolding (**word**) to highlight key terms so the user can scan the text quickly.
+            4. Use bullet points or numbered lists instead of long blocks of prose.
+            5. Never return a solid wall of text. Spacing is priority.
+          ` 
+        },
+        ...messages
+      ],
+    });
 
-    const lastMessage = messages[messages.length - 1].content;
-    const result = await model.generateContent(lastMessage);
-    const response = await result.response;
+    const reply = completion.choices[0].message.content;
 
-    return NextResponse.json({ reply: response.text() });
+    return NextResponse.json({ reply: reply });
   } catch (error: any) {
-    // This will now send the EXACT error message to your browser screen
-    return NextResponse.json({ error: "DEBUG ERROR: " + error.message }, { status: 500 });
+    console.error("DEEPSEEK ERROR:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
