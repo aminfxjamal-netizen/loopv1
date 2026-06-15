@@ -2,9 +2,9 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
-export default function Dashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const [isConnected, setIsConnected] = useState(false);
 
@@ -18,7 +18,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#0A0A0A] text-white font-sans p-8">
       {/* Header */}
       <header className="max-w-6xl mx-auto flex justify-between items-center border-b border-zinc-800 pb-6 mb-12">
-        <h1 className="text-2xl font-bold tracking-wider bg-gradient-to-r应用 bg-clip-text text-transparent from-white to-zinc-400">
+        <h1 className="text-2xl font-bold tracking-wider bg-gradient-to-r bg-clip-text text-transparent from-white to-zinc-400">
           LOOP AGENT WORKSPACE
         </h1>
         <div className="flex items-center gap-3">
@@ -81,5 +81,18 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Wrapping it in Suspense fixes the Next.js prerender error completely
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500">
+        Loading Workspace Engine...
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
