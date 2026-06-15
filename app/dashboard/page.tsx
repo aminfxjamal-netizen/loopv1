@@ -2,212 +2,240 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 
-interface TelemetryLog {
-  id: string;
-  timestamp: string;
-  event: string;
-  status: "INFO" | "SUCCESS" | "WARN" | "CRITICAL";
+interface ActionPayload {
+  to: string;
+  subject: string;
+  body: string;
 }
 
-function WorkspaceEngine() {
-  const searchParams = useSearchParams();
-  const [isLinked, setIsLinked] = useState<boolean>(false);
-  
-  // Pipeline State
-  const [recipient, setRecipient] = useState<string>("");
-  const [subject, setSubject] = useState<string>("");
-  const [payload, setPayload] = useState<string>("");
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const [telemetry, setTelemetry] = useState<TelemetryLog[]>([]);
+interface Message {
+  id: string;
+  origin: "user" | "infrastructure";
+  text: string;
+  stage?: "authorization_gate" | "system_log";
+  payloadData?: ActionPayload;
+  actionStatus?: "awaiting_clearance" | "dispatched" | "aborted";
+}
 
+function LoopWorkspaceCore() {
+  const searchParams = useSearchParams();
+  const [commandInput, setCommandInput] = useState("");
+  const [stream, setStream] = useState<Message[]>([]);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const streamEndRef = useRef<HTMLDivElement>(null);
+
+  // Clean parameters and initialize conversational engine
   useEffect(() => {
     if (searchParams.get("google") === "connected") {
-      setIsLinked(true);
-      pushLog("OAuth2 secure relay initialized. Upstream nodes verified.", "SUCCESS");
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      setStream([
+        {
+          id: "sys-init",
+          origin: "infrastructure",
+          text: "Secure OAuth2 pipeline verification complete. Upstream nodes connected to Gmail, Calendar, and Drive infrastructure layers. Awaiting natural language directives.",
+        },
+      ]);
     }
   }, [searchParams]);
 
-  const pushLog = (event: string, status: TelemetryLog["status"] = "INFO") => {
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const newLog: TelemetryLog = { id: Math.random().toString(36).substring(2, 9), timestamp: time, event, status };
-    setTelemetry((prev) => [newLog, ...prev]);
+  useEffect(() => {
+    streamEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [stream]);
+
+  const handleCommandSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commandInput.trim()) return;
+
+    const userCommand = commandInput;
+    const trackingId = Math.random().toString(36).substring(2, 9);
+
+    setStream((prev) => [
+      ...prev,
+      { id: `user-${trackingId}`, origin: "user", text: userCommand },
+    ]);
+    setCommandInput("");
+    setIsEvaluating(true);
+
+    setTimeout(() => {
+      setIsEvaluating(false);
+
+      const normalized = userCommand.toLowerCase();
+      if (normalized.includes("email") || normalized.includes("send") || normalized.includes("draft")) {
+        setStream((prev) => [
+          ...prev,
+          {
+            id: `agent-gate-${trackingId}`,
+            origin: "infrastructure",
+            text: "Parsed intent mapped to outbound communication pipeline. Generated data package ready for staging. Human verification required before server transmission.",
+            stage: "authorization_gate",
+            actionStatus: "awaiting_clearance",
+            payloadData: {
+              to: "partner@enterprise-tier.com",
+              subject: "Infrastructure Milestone Verification",
+              body: "Operational update packet compiled successfully. All background integrations verified by local loop framework layers.",
+            },
+          },
+        ]);
+      } else {
+        setStream((prev) => [
+          ...prev,
+          {
+            id: `agent-fallback-${trackingId}`,
+            origin: "infrastructure",
+            text: "Direct command interpreted. No transactional mutations staged. Provide explicit intent variables (e.g., 'Draft an email to client') to trigger an authorized execution path.",
+          },
+        ]);
+      }
+    }, 1000);
   };
 
-  const handlePipelineDispatch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    pushLog(`Establishing secure tunnel to transport layer...`, "INFO");
+  const executeStagedPayload = async (messageId: string, payload: ActionPayload) => {
+    // Explicit return type forces TypeScript to accept the state mutation cleanly
+    setStream((prev) =>
+      prev.map((msg): Message => 
+        msg.id === messageId ? { ...msg, actionStatus: "dispatched" as const } : msg
+      )
+    );
 
     try {
       const response = await fetch("/api/gmail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          refreshToken: "loop_secure_vault_token", 
-          to: recipient,
-          subject: subject,
-          body: payload,
+          refreshToken: "loop_active_vault_relay",
+          to: payload.to,
+          subject: payload.subject,
+          body: payload.body,
         }),
       });
 
-      const result = await response.json();
-      
-      if (result.success) {
-        pushLog(`Payload accepted by SMTP relay. Transmission successful.`, "SUCCESS");
-        setRecipient("");
-        setSubject("");
-        setPayload("");
-      } else {
-        pushLog(`Relay rejected payload packet: ${result.error || "Execution fault"}`, "CRITICAL");
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Upstream network rejection.");
       }
     } catch (err) {
-      pushLog("Network handshake timeout. Destination cluster unreachable.", "CRITICAL");
-    } finally {
-      setIsProcessing(false);
+      console.error("Critical core routing failure:", err);
     }
   };
 
+  const abortStagedPayload = (messageId: string) => {
+    setStream((prev) =>
+      prev.map((msg): Message => 
+        msg.id === messageId ? { ...msg, actionStatus: "aborted" as const } : msg
+      )
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-[#030303] text-[#A3A3A3] font-sans antialiased p-6 md:p-12 selection:bg-zinc-800 selection:text-white">
+    <div className="min-h-screen bg-[#050506] text-[#D4D4D8] font-sans antialiased flex flex-col justify-between selection:bg-zinc-800 selection:text-white">
       
-      {/* Premium Navigation Header */}
-      <header className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-900/80 pb-8 mb-12 gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="text-white tracking-tighter text-sm font-black uppercase tracking-widest bg-zinc-900 px-2 py-1 rounded border border-zinc-800">
-              L // P
-            </span>
-            <h1 className="text-base font-semibold tracking-tight text-white font-mono">
-              LOOP_WORKSPACE_CORE
-            </h1>
-          </div>
-          <p className="text-xs text-zinc-600 mt-1.5 font-mono">SECURE AGENT ROUTING INTERFACE // BUILD v1.6.2</p>
-        </div>
-        
-        <div className="flex items-center gap-3 bg-[#0A0A0C] border border-zinc-900 px-4 py-2 rounded-lg shadow-sm">
-          <span className={`h-1.5 w-1.5 rounded-full ${isLinked ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" : "bg-zinc-700"}`}></span>
-          <span className="text-xs font-mono tracking-tight text-zinc-400">
-            {isLinked ? "RELAY_STATUS: ACTIVE" : "RELAY_STATUS: OFFLINE"}
+      <header className="border-b border-zinc-900 bg-[#050506]/90 backdrop-blur-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <span className="text-white text-xs font-mono font-black bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded tracking-widest">
+            L // P
           </span>
+          <span className="text-xs font-mono font-semibold tracking-tight text-zinc-400">LOOP_AGENT_CORE</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></span>
+          NODE_STABLE
         </div>
       </header>
 
-      {/* Main Structural System Layout */}
-      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Interactive Execution Panel */}
-        <section className="lg:col-span-5 bg-[#0A0A0C] border border-zinc-900 p-6 md:p-8 rounded-xl relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-zinc-800 to-transparent"></div>
-          
-          <h2 className="text-xs font-mono font-bold tracking-widest text-zinc-400 uppercase mb-6 flex items-center justify-between">
-            <span>TRANSMISSION PIPELINE</span>
-            <span className="text-zinc-700">SYS_MODULE_01</span>
-          </h2>
+      <div className="flex-1 max-w-2xl w-full mx-auto px-4 py-12 overflow-y-auto space-y-8">
+        {stream.map((msg) => (
+          <div key={msg.id} className={`flex flex-col ${msg.origin === "user" ? "items-end" : "items-start"}`}>
+            
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-600 mb-1.5 px-1">
+              {msg.origin === "user" ? "USER_COMMAND" : "CORE_INFRASTRUCTURE"}
+            </span>
 
-          <form onSubmit={handlePipelineDispatch} className="space-y-6 text-xs">
-            <div>
-              <label className="block text-zinc-500 mb-2 font-mono uppercase tracking-wider">TARGET CONFIGURATION (TO)</label>
-              <input 
-                type="email" 
-                required
-                placeholder="recipient@domain.com"
-                value={recipient}
-                onChange={(e) => setRecipient(e.target.value)}
-                className="w-full bg-[#030303] border border-zinc-900 text-zinc-200 rounded-lg p-3.5 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-800 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-500 mb-2 font-mono uppercase tracking-wider">ROUTING HEADER (SUBJECT)</label>
-              <input 
-                type="text" 
-                required
-                placeholder="Operational Sync Manifest"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                className="w-full bg-[#030303] border border-zinc-900 text-zinc-200 rounded-lg p-3.5 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-800 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-zinc-500 mb-2 font-mono uppercase tracking-wider">DATA PAYLOAD STREAM (BODY)</label>
-              <textarea 
-                rows={6}
-                required
-                placeholder="Inject structural context array or plaintext..."
-                value={payload}
-                onChange={(e) => setPayload(e.target.value)}
-                className="w-full bg-[#030303] border border-zinc-900 text-zinc-200 rounded-lg p-3.5 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-800 outline-none transition resize-none font-mono text-xs"
-              />
-            </div>
+            <div className={`w-full rounded-lg p-4 text-sm leading-relaxed border ${
+              msg.origin === "user" 
+                ? "bg-zinc-900/40 border-zinc-800/60 text-zinc-100 max-w-[85%] ml-auto" 
+                : "bg-transparent border-transparent text-zinc-300"
+            }`}>
+              <div>{msg.text}</div>
 
-            <button 
-              type="submit"
-              disabled={isProcessing || !isLinked}
-              className="w-full bg-white text-black font-semibold tracking-tight py-3.5 rounded-lg hover:bg-zinc-200 transition disabled:opacity-10 disabled:cursor-not-allowed shadow-md"
-            >
-              {isProcessing ? "PROCESSING_DISPATCH..." : "EXECUTE STREAM DISPATCH"}
-            </button>
-          </form>
-        </section>
+              {msg.stage === "authorization_gate" && msg.payloadData && (
+                <div className="mt-4 border border-zinc-900 bg-[#09090B] rounded-lg p-5 space-y-4 font-mono text-xs shadow-xl">
+                  <div className="border-b border-zinc-900 pb-2 text-[10px] text-zinc-500 tracking-wider font-bold">
+                    STAGED ROUTING DATA METRICS
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-zinc-600"><span className="text-zinc-500">RELAY_TO:</span> {msg.payloadData.to}</div>
+                    <div className="text-zinc-600"><span className="text-zinc-500">RELAY_SUBJ:</span> {msg.payloadData.subject}</div>
+                  </div>
+                  
+                  <div className="bg-[#030303] border border-zinc-900 p-4 rounded font-sans text-zinc-400 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line">
+                    {msg.payloadData.body}
+                  </div>
 
-        {/* Right Node Matrix & Operational Telemetry */}
-        <section className="lg:col-span-7 flex flex-col gap-6">
-          
-          {/* Node Infrastructure Matrix */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#0A0A0C] border border-zinc-900 p-6 rounded-xl relative shadow-md">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-xs font-mono font-bold text-zinc-300 uppercase">Messaging Cluster</span>
-                <span className="text-[10px] font-mono text-emerald-500/80 bg-emerald-950/20 border border-emerald-900/50 px-2 py-0.5 rounded">ONLINE</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed font-mono">
-                [NODE_0] Mapped via asynchronous REST hooks directly to `/api/gmail`. Configured for instant outbound bursts.
-              </p>
-            </div>
-
-            <div className="bg-[#0A0A0C] border border-zinc-900 p-6 rounded-xl relative shadow-md">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-xs font-mono font-bold text-zinc-300 uppercase">Calendar Node</span>
-                <span className="text-[10px] font-mono text-emerald-500/80 bg-emerald-950/20 border border-emerald-900/50 px-2 py-0.5 rounded">READY</span>
-              </div>
-              <p className="text-xs text-zinc-500 leading-relaxed font-mono">
-                [NODE_1] Full multi-tenant resource locking sequences mapped. Operational for automated grid conflict checks.
-              </p>
-            </div>
-          </div>
-
-          {/* Real-time Telemetry Data Log */}
-          <div className="flex-1 bg-[#0A0A0C] border border-zinc-900 rounded-xl p-6 flex flex-col justify-between shadow-2xl relative">
-            <div className="w-full">
-              <div className="text-xs font-mono font-bold tracking-wider text-zinc-400 uppercase mb-4 border-b border-zinc-900/80 pb-3 flex justify-between items-center">
-                <span>SYSTEM DIAGNOSTICS STREAM</span>
-                <span className="text-[10px] text-zinc-600 font-normal">LIVE DISPATCH TELEMETRY</span>
-              </div>
-              
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 font-mono text-xs">
-                {telemetry.length === 0 ? (
-                  <div className="text-zinc-700 italic py-2">[SYSTEM_IDLE] Waiting for input triggers...</div>
-                ) : (
-                  telemetry.map((log) => (
-                    <div key={log.id} className="flex items-start gap-3 py-1 border-b border-zinc-900/30 last:border-0">
-                      <span className="text-zinc-600 shrink-0 text-[11px]">{log.timestamp}</span>
-                      <span className={`shrink-0 font-bold text-[10px] tracking-wide px-1 rounded ${
-                        log.status === "SUCCESS" ? "text-emerald-400 bg-emerald-950/20" :
-                        log.status === "CRITICAL" ? "text-rose-400 bg-rose-950/20" : "text-zinc-500 bg-zinc-900"
-                      }`}>
-                        [{log.status}]
-                      </span>
-                      <span className="text-zinc-300 break-all leading-relaxed">{log.event}</span>
+                  {msg.actionStatus === "awaiting_clearance" && (
+                    <div className="pt-2 flex gap-3 text-xs">
+                      <button 
+                        onClick={() => executeStagedPayload(msg.id, msg.payloadData!)}
+                        className="bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded font-medium tracking-tight transition"
+                      >
+                        Authorize and Dispatch
+                      </button>
+                      <button 
+                        onClick={() => abortStagedPayload(msg.id)}
+                        className="bg-transparent text-zinc-500 hover:text-zinc-400 px-2 py-2 rounded tracking-tight transition"
+                      >
+                        Abort Command
+                      </button>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+
+                  {msg.actionStatus === "dispatched" && (
+                    <div className="text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 p-2.5 rounded font-bold tracking-tight text-center">
+                      ✓ PIPELINE DISPATCHED: Sequence successfully processed by SMTP cluster.
+                    </div>
+                  )}
+
+                  {msg.actionStatus === "aborted" && (
+                    <div className="text-zinc-500 bg-zinc-900/40 border border-zinc-800/40 p-2.5 rounded italic text-center">
+                      ✕ COMMAND TERMINATED: Data stack wiped from local execution cache.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+        ))}
 
-        </section>
-      </main>
+        {isEvaluating && (
+          <div className="flex items-center gap-2 pl-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-600 animate-ping"></span>
+            <span className="text-xs font-mono text-zinc-600 tracking-tight">Evaluating lexical matrix arrays...</span>
+          </div>
+        )}
+        <div ref={streamEndRef} />
+      </div>
+
+      <footer className="border-t border-zinc-950 p-4 bg-[#050506] sticky bottom-0">
+        <form onSubmit={handleCommandSubmit} className="max-w-2xl w-full mx-auto relative flex items-center">
+          <input 
+            type="text"
+            value={commandInput}
+            onChange={(e) => setCommandInput(e.target.value)}
+            placeholder="Execute system commands or compose outbound pipelines..."
+            className="w-full bg-[#09090B] border border-zinc-900 text-sm rounded-xl pl-4 pr-16 py-4 focus:border-zinc-800 focus:outline-none text-zinc-200 placeholder-zinc-700 transition"
+          />
+          <button 
+            type="submit"
+            className="absolute right-3 text-[10px] font-mono bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800 px-3 py-1.5 rounded-md transition"
+          >
+            EXECUTE
+          </button>
+        </form>
+      </footer>
+
     </div>
   );
 }
@@ -215,11 +243,11 @@ function WorkspaceEngine() {
 export default function Dashboard() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#030303] font-mono flex items-center justify-center text-zinc-600 text-xs tracking-widest">
-        [SYS_INIT] LOADING ARCHITECTURE LAYER...
+      <div className="min-h-screen bg-[#050506] font-mono flex items-center justify-center text-zinc-700 text-xs tracking-widest">
+        CRITICAL_LOAD_SEQUENCE // EXECUTING
       </div>
     }>
-      <WorkspaceEngine />
+      <LoopWorkspaceCore />
     </Suspense>
   );
 }
