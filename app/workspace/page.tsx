@@ -16,39 +16,96 @@ interface ConnectedApp {
   icon: string;
 }
 
+// --- Settings Modal Component ---
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onDisconnect: () => void;
+  hasAppsConnected: boolean;
+}
+
+const SettingsModal = ({ isOpen, onClose, onDisconnect, hasAppsConnected }: SettingsModalProps) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 border border-slate-100 text-[#0F172A]">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-bold tracking-tight">System Settings</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+        <div className="space-y-2">
+          <button className="w-full text-left p-3.5 rounded-xl hover:bg-slate-50 transition text-sm font-medium border border-slate-100">
+            Account Preferences
+          </button>
+          <button className="w-full text-left p-3.5 rounded-xl hover:bg-slate-50 transition text-sm font-medium border border-slate-100">
+            Security Keys & API
+          </button>
+          {hasAppsConnected && (
+            <button 
+              onClick={onDisconnect}
+              className="w-full text-left p-3.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 transition text-sm font-semibold flex items-center justify-between"
+            >
+              Disconnect Google Workspace
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Workspace Page ---
 export default function WorkspacePage() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
-  // Real dynamic states - initialized empty
   const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
   const [recentHistory, setRecentHistory] = useState<string[]>([]);
+  const [stagedAction, setStagedAction] = useState<StagedAction | null>(null);
   
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" }>({
     show: false,
     message: "",
     type: "success",
   });
-  
-  const [stagedAction, setStagedAction] = useState<StagedAction | null>(null);
 
+  // Load and manage connections persistently
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // 1. Check if they just got redirected from auth oauth link
       const params = new URLSearchParams(window.location.search);
+      const standardApps = [
+        { name: "Gmail", color: "text-red-500", bg: "bg-red-50", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
+        { name: "Google Drive", color: "text-emerald-500", bg: "bg-emerald-50", icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" },
+        { name: "Calendar", color: "text-blue-500", bg: "bg-blue-50", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" }
+      ];
+
       if (params.get("google") === "connected") {
         window.history.replaceState({}, document.title, window.location.pathname);
-        
-        setConnectedApps([
-          { name: "Gmail", color: "text-red-500", bg: "bg-red-50", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
-          { name: "Google Drive", color: "text-emerald-500", bg: "bg-emerald-50", icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" },
-          { name: "Calendar", color: "text-blue-500", bg: "bg-blue-50", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" }
-        ]);
-        
+        localStorage.setItem("loop_google_connected", "true");
+        setConnectedApps(standardApps);
         triggerToast("Google Workspace linked successfully.", "success");
+      } else {
+        // 2. Check if localstorage already knows they are verified/connected
+        const wasConnected = localStorage.getItem("loop_google_connected");
+        if (wasConnected === "true") {
+          setConnectedApps(standardApps);
+        }
       }
     }
   }, []);
+
+  const handleDisconnectWorkspace = () => {
+    localStorage.removeItem("loop_google_connected");
+    setConnectedApps([]);
+    setIsSettingsOpen(false);
+    triggerToast("Workspace connections revoked securely.", "error");
+  };
 
   const triggerToast = (message: string, type: "success" | "error") => {
     setToast({ show: true, message, type });
@@ -68,7 +125,6 @@ export default function WorkspacePage() {
         emailBody: "Hi Team,\n\nI have securely deployed our core communication nodes. The human-in-the-loop security protocols are fully online.\n\nBest,\nOperator",
       });
       setIsProcessing(false);
-      
       setRecentHistory(prev => [inputValue, ...prev]);
       setInputValue("");
     }, 800);
@@ -86,12 +142,10 @@ export default function WorkspacePage() {
       });
 
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || "Operational failure during dispatch sequence.");
 
       triggerToast("Action approved. Message securely dispatched.", "success");
       setStagedAction(null);
-
     } catch (error: any) {
       console.error("Dispatch Error:", error);
       triggerToast(error.message || "Failed to clear security gate.", "error");
@@ -103,6 +157,15 @@ export default function WorkspacePage() {
   return (
     <div className="min-h-screen bg-white text-[#0F172A] font-sans antialiased flex selection:bg-blue-50 selection:text-[#2563EB]">
       
+      {/* Settings Modal Layer */}
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        onDisconnect={handleDisconnectWorkspace}
+        hasAppsConnected={connectedApps.length > 0}
+      />
+
+      {/* Toast Alert Notifications */}
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3.5 rounded-xl border text-xs font-medium shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-top-4 ${
           toast.type === "success" ? "bg-slate-900 border-slate-800 text-white" : "bg-red-50 border-red-200 text-red-600"
@@ -115,17 +178,12 @@ export default function WorkspacePage() {
       {/* Advanced Light-Themed Sidebar */}
       <aside className="w-64 border-r border-[#F1F5F9] bg-[#FAFAFA] flex flex-col justify-between shrink-0 hidden md:flex h-screen overflow-y-auto scrollbar-none">
         <div className="p-5 space-y-6">
-          
           <div className="space-y-4">
-            <div className="text-xl font-bold tracking-tight text-[#0F172A] mb-6">
-              LOOP
-            </div>
-            
+            <div className="text-xl font-bold tracking-tight text-[#0F172A] mb-6">LOOP</div>
             <button className="w-full bg-[#2563EB] hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium text-sm transition flex items-center justify-center gap-2 shadow-sm shadow-blue-500/20">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
               New Chat
             </button>
-
             <button className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-200/50 rounded-xl text-sm font-medium text-[#0F172A] hover:bg-slate-200 transition">
               <div className="flex items-center gap-3">
                 <svg className="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
@@ -139,16 +197,15 @@ export default function WorkspacePage() {
           {/* DYNAMIC Connected Apps Section */}
           <div className="space-y-2.5">
             <div className="text-[11px] font-medium text-[#64748B] mb-3">Connected Apps</div>
-            
             {connectedApps.length === 0 ? (
               <div className="text-xs text-[#94A3B8] px-3 italic">No apps connected.</div>
             ) : (
               connectedApps.map((app, i) => (
-                <button key={i} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-[#334155] hover:bg-slate-200/50 transition">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center ${app.bg} ${app.color}`}>
+                <button key={i} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-[#334155] hover:bg-slate-200/50 transition text-left">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center ${app.bg} ${app.color} shrink-0`}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={app.icon}></path></svg>
                   </div>
-                  {app.name}
+                  <span className="truncate">{app.name}</span>
                 </button>
               ))
             )}
@@ -159,7 +216,6 @@ export default function WorkspacePage() {
           {/* DYNAMIC Recent Conversations */}
           <div className="space-y-1">
             <div className="text-[11px] font-medium text-[#64748B] mb-2">Recent Conversations</div>
-            
             {recentHistory.length === 0 ? (
               <div className="text-xs text-[#94A3B8] px-3 italic">No recent chats.</div>
             ) : (
@@ -173,22 +229,24 @@ export default function WorkspacePage() {
           </div>
         </div>
 
-        {/* Bottom Settings & Billing */}
+        {/* Bottom Actions */}
         <div className="p-5 border-t border-[#E2E8F0] space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/50 transition group text-sm text-[#334155] font-medium group-hover:text-[#0F172A]">
+          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/50 transition group text-sm text-[#334155] font-medium">
              <svg className="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
              Billing
           </button>
-          
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/50 transition group text-sm text-[#334155] font-medium group-hover:text-[#0F172A]">
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-200/50 transition group text-sm text-[#334155] font-medium"
+          >
              <svg className="w-4 h-4 text-[#64748B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
              Settings
           </button>
         </div>
       </aside>
 
+      {/* Work Arena Area */}
       <main className="flex-1 flex flex-col justify-between relative h-screen">
-        
         <header className="flex justify-end p-6 absolute top-0 w-full z-10">
           <button className="bg-white border border-[#E2E8F0] shadow-sm text-[#0F172A] hover:bg-slate-50 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition">
             <svg className="w-3.5 h-3.5 text-[#2563EB]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
@@ -244,18 +302,10 @@ export default function WorkspacePage() {
                 </div>
               </div>
               <div className="px-6 py-5 border-t border-[#E2E8F0] bg-white flex justify-end gap-3">
-                <button
-                  onClick={() => setStagedAction(null)}
-                  disabled={isSending}
-                  className="px-5 py-2.5 hover:bg-slate-50 text-[#64748B] font-medium text-sm rounded-xl transition disabled:opacity-50"
-                >
+                <button onClick={() => setStagedAction(null)} disabled={isSending} className="px-5 py-2.5 hover:bg-slate-50 text-[#64748B] font-medium text-sm rounded-xl transition disabled:opacity-50">
                   Abort
                 </button>
-                <button
-                  onClick={handleAuthorizeAndDispatch}
-                  disabled={isSending}
-                  className="px-6 py-2.5 bg-[#0F172A] hover:bg-black text-white font-medium text-sm rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50"
-                >
+                <button onClick={handleAuthorizeAndDispatch} disabled={isSending} className="px-6 py-2.5 bg-[#0F172A] hover:bg-black text-white font-medium text-sm rounded-xl shadow-md transition flex items-center gap-2 disabled:opacity-50">
                   {isSending ? "Executing..." : "Authorize Action"}
                 </button>
               </div>
@@ -263,12 +313,9 @@ export default function WorkspacePage() {
           )}
         </div>
 
-        {/* Clean Floating Omnibox Input Area */}
+        {/* Floating Input Box */}
         <div className="absolute bottom-0 w-full bg-gradient-to-t from-white via-white to-transparent pt-10 pb-8 px-6 flex flex-col items-center gap-4">
-          <form 
-            onSubmit={handleCommandSubmit}
-            className="w-full max-w-3xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm rounded-2xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#CBD5E1] focus-within:bg-white focus-within:shadow-md transition-all duration-300"
-          >
+          <form onSubmit={handleCommandSubmit} className="w-full max-w-3xl bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm rounded-2xl px-4 py-3.5 flex items-center gap-3 focus-within:border-[#CBD5E1] focus-within:bg-white focus-within:shadow-md transition-all duration-300">
             <input
               type="text"
               value={inputValue}
@@ -277,11 +324,7 @@ export default function WorkspacePage() {
               placeholder="Ask anything ..."
               className="flex-1 bg-transparent border-none text-sm focus:outline-none placeholder-[#94A3B8] disabled:opacity-50"
             />
-            <button
-              type="submit"
-              disabled={isProcessing || isSending || !!stagedAction || !inputValue.trim()}
-              className="bg-[#0F172A] hover:bg-slate-800 text-white p-2 rounded-xl transition disabled:opacity-30 disabled:hover:bg-[#0F172A]"
-            >
+            <button type="submit" disabled={isProcessing || isSending || !!stagedAction || !inputValue.trim()} className="bg-[#0F172A] hover:bg-slate-800 text-white p-2 rounded-xl transition disabled:opacity-30">
                <svg className="w-4 h-4 transform rotate-90" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19V5m0 0l-7 7m7-7l7 7" />
                </svg>
