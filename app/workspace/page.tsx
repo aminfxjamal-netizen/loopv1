@@ -33,13 +33,20 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   hasAppsConnected: boolean;
+  userId: string | null;
+  triggerToast: (msg: string, type: "success" | "error") => void;
 }
 
-const SettingsModal = ({ isOpen, onClose, hasAppsConnected }: SettingsModalProps) => {
+const SettingsModal = ({ isOpen, onClose, hasAppsConnected, userId, triggerToast }: SettingsModalProps) => {
   if (!isOpen) return null;
   
+  // STEP 1 ISOLATION: Explicitly bind the active session UID onto the API execution call
   const handleInitiateOAuth = () => {
-    window.location.href = "/api/auth/google";
+    if (!userId) {
+      triggerToast("Authentication state missing. Please re-login.", "error");
+      return;
+    }
+    window.location.href = `/api/auth/google?uid=${userId}`;
   };
 
   return (
@@ -103,7 +110,6 @@ export default function WorkspacePage() {
         const uid = session.user.id;
         setUserId(uid);
 
-        // 1. Fetch baseline connected apps integration list
         const { data: integrationData } = await supabase
           .from("user_integrations")
           .select("active_services")
@@ -114,7 +120,6 @@ export default function WorkspacePage() {
           mapAndSetApps(integrationData.active_services);
         }
 
-        // 2. Fetch baseline chat history values
         const { data: records } = await supabase
           .from("chat_history")
           .select("id, sender, message")
@@ -125,7 +130,6 @@ export default function WorkspacePage() {
           setChatHistory(records);
         }
 
-        // 3. Realtime pipeline for dynamic cloud integrations (Corrected to schema)
         integrationChannel = supabase
           .channel(`user_integrations_${uid}`)
           .on(
@@ -138,7 +142,6 @@ export default function WorkspacePage() {
           )
           .subscribe();
 
-        // 4. Realtime stream for text communication pipelines (Corrected to schema)
         chatChannel = supabase
           .channel(`chat_history_${uid}`)
           .on(
@@ -269,7 +272,13 @@ export default function WorkspacePage() {
 
   return (
     <div className="min-h-screen bg-white text-[#0F172A] font-sans antialiased flex">
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} hasAppsConnected={connectedApps.length > 0} />
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+        hasAppsConnected={connectedApps.length > 0} 
+        userId={userId} 
+        triggerToast={triggerToast} 
+      />
 
       {toast.show && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3.5 rounded-xl border text-xs font-medium shadow-sm ${
