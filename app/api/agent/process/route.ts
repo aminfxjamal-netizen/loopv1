@@ -8,7 +8,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Checks if the user's intent involves an email task
     const isEmailIntent = command.toLowerCase().includes("email") || command.toLowerCase().includes("send");
 
     if (isEmailIntent) {
@@ -23,7 +22,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // Default response layout fallback
     return NextResponse.json({
       message: "Command parsed completely. No external validation sequences required."
     });
