@@ -40,8 +40,7 @@ interface SettingsModalProps {
 const SettingsModal = ({ isOpen, onClose, hasAppsConnected, userId, triggerToast }: SettingsModalProps) => {
   if (!isOpen) return null;
   
-  // STEP 1 ISOLATION: Explicitly bind the active session UID onto the API execution call
-  const handleInitiateOAuth = () => {
+  const handleAppSequenceTrigger = () => {
     if (!userId) {
       triggerToast("Authentication state missing. Please re-login.", "error");
       return;
@@ -61,7 +60,7 @@ const SettingsModal = ({ isOpen, onClose, hasAppsConnected, userId, triggerToast
         <div className="space-y-2">
           {!hasAppsConnected ? (
             <button 
-              onClick={handleInitiateOAuth}
+              onClick={handleAppSequenceTrigger}
               className="w-full text-center p-3.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white transition text-sm font-semibold flex items-center justify-center"
             >
               Connect Google Workspace
@@ -104,59 +103,70 @@ export default function WorkspacePage() {
     let chatChannel: any;
 
     const setupAuthAndSync = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const uid = session.user.id;
-        setUserId(uid);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          const uid = session.user.id;
+          
+          // CRITICAL FIX: Set the user ID immediately BEFORE querying records 
+          // so the frontend is never locked out due to empty rows.
+          setUserId(uid);
 
-        const { data: integrationData } = await supabase
-          .from("user_integrations")
-          .select("active_services")
-          .eq("user_id", uid)
-          .single();
+          // Fetch current integrations safely
+          const { data: integrationData, error: integrationError } = await supabase
+            .from("user_integrations")
+            .select("active_services")
+            .eq("user_id", uid);
 
-        if (integrationData?.active_services) {
-          mapAndSetApps(integrationData.active_services);
+          // Only process data if a row actually exists
+          if (!integrationError && integrationData && integrationData.length > 0) {
+            mapAndSetApps(integrationData[0].active_services || []);
+          }
+
+          // Fetch baseline chat history values
+          const { data: records } = await supabase
+            .from("chat_history")
+            .select("id, sender, message")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: true });
+
+          if (records) {
+            setChatHistory(records);
+          }
+
+          // Realtime pipeline for dynamic cloud integrations
+          integrationChannel = supabase
+            .channel(`user_integrations_${uid}`)
+            .on(
+              "postgres_changes",
+              { event: "*", schema: "public", table: "user_integrations", filter: `user_id=eq.${uid}` },
+              (payload: any) => {
+                const services = payload.new?.active_services || [];
+                mapAndSetApps(services);
+              }
+            )
+            .subscribe();
+
+          // Realtime stream for text communication pipelines
+          chatChannel = supabase
+            .channel(`chat_history_${uid}`)
+            .on(
+              "postgres_changes",
+              { event: "INSERT", schema: "public", table: "chat_history", filter: `user_id=eq.${uid}` },
+              (payload: any) => {
+                const newMsg = payload.new as ChatMessage;
+                setChatHistory(prev => {
+                  const alreadyExists = prev.some(msg => msg.id === newMsg.id || (msg.message === newMsg.message && msg.sender === newMsg.sender));
+                  if (alreadyExists) return prev;
+                  return [...prev, newMsg];
+                });
+              }
+            )
+            .subscribe();
         }
-
-        const { data: records } = await supabase
-          .from("chat_history")
-          .select("id, sender, message")
-          .eq("user_id", uid)
-          .order("created_at", { ascending: true });
-
-        if (records) {
-          setChatHistory(records);
-        }
-
-        integrationChannel = supabase
-          .channel(`user_integrations_${uid}`)
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: "user_integrations", filter: `user_id=eq.${uid}` },
-            (payload: any) => {
-              const services = payload.new?.active_services || [];
-              mapAndSetApps(services);
-            }
-          )
-          .subscribe();
-
-        chatChannel = supabase
-          .channel(`chat_history_${uid}`)
-          .on(
-            "postgres_changes",
-            { event: "INSERT", schema: "public", table: "chat_history", filter: `user_id=eq.${uid}` },
-            (payload: any) => {
-              const newMsg = payload.new as ChatMessage;
-              setChatHistory(prev => {
-                const alreadyExists = prev.some(msg => msg.id === newMsg.id || (msg.message === newMsg.message && msg.sender === newMsg.sender));
-                if (alreadyExists) return prev;
-                return [...prev, newMsg];
-              });
-            }
-          )
-          .subscribe();
+      } catch (err) {
+        console.error("Auth initialization failure error tracker:", err);
       }
     };
 
