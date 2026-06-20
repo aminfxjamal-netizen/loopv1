@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-// Import directly from the official package to prevent import path errors
 import { createBrowserClient } from "@supabase/ssr"; 
 
 interface StagedAction {
@@ -16,6 +15,12 @@ interface ConnectedApp {
   color: string;
   bg: string;
   icon: string;
+}
+
+interface ChatMessage {
+  id?: string;
+  sender: string;
+  message: string;
 }
 
 const APP_UI_MAP: Record<string, Omit<ConnectedApp, "name">> = {
@@ -66,7 +71,6 @@ const SettingsModal = ({ isOpen, onClose, hasAppsConnected }: SettingsModalProps
 };
 
 export default function WorkspacePage() {
-  // Directly initialize the browser client using your public env variables
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -78,7 +82,7 @@ export default function WorkspacePage() {
   const [isSending, setIsSending] = useState(false);
   
   const [connectedApps, setConnectedApps] = useState<ConnectedApp[]>([]);
-  const [recentHistory, setRecentHistory] = useState<string[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]); 
   const [stagedAction, setStagedAction] = useState<StagedAction | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   
@@ -89,7 +93,8 @@ export default function WorkspacePage() {
   });
 
   useEffect(() => {
-    let channel: any;
+    let integrationChannel: any;
+    let chatChannel: any;
 
     const setupAuthAndSync = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -98,19 +103,30 @@ export default function WorkspacePage() {
         const uid = session.user.id;
         setUserId(uid);
 
-        // Fetch user integrations from your custom table mapping
-        const { data } = await supabase
+        // 1. Fetch baseline connected apps integration list
+        const { data: integrationData } = await supabase
           .from("user_integrations")
           .select("active_services")
           .eq("user_id", uid)
           .single();
 
-        if (data?.active_services) {
-          mapAndSetApps(data.active_services);
+        if (integrationData?.active_services) {
+          mapAndSetApps(integrationData.active_services);
         }
 
-        // Realtime subscription setup
-        channel = supabase
+        // 2. Fetch baseline chat history values
+        const { data: records } = await supabase
+          .from("chat_history")
+          .select("id, sender, message")
+          .eq("user_id", uid)
+          .order("created_at", { ascending: true });
+
+        if (records) {
+          setChatHistory(records);
+        }
+
+        // 3. Realtime pipeline for dynamic cloud integrations (Corrected to schema)
+        integrationChannel = supabase
           .channel(`user_integrations_${uid}`)
           .on(
             "postgres_changes",
@@ -118,6 +134,23 @@ export default function WorkspacePage() {
             (payload: any) => {
               const services = payload.new?.active_services || [];
               mapAndSetApps(services);
+            }
+          )
+          .subscribe();
+
+        // 4. Realtime stream for text communication pipelines (Corrected to schema)
+        chatChannel = supabase
+          .channel(`chat_history_${uid}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "chat_history", filter: `user_id=eq.${uid}` },
+            (payload: any) => {
+              const newMsg = payload.new as ChatMessage;
+              setChatHistory(prev => {
+                const alreadyExists = prev.some(msg => msg.id === newMsg.id || (msg.message === newMsg.message && msg.sender === newMsg.sender));
+                if (alreadyExists) return prev;
+                return [...prev, newMsg];
+              });
             }
           )
           .subscribe();
@@ -140,6 +173,7 @@ export default function WorkspacePage() {
       if (!session) {
         setUserId(null);
         setConnectedApps([]);
+        setChatHistory([]);
       } else {
         setUserId(session.user.id);
       }
@@ -147,7 +181,8 @@ export default function WorkspacePage() {
 
     return () => {
       subscription.unsubscribe();
-      if (channel) supabase.removeChannel(channel);
+      if (integrationChannel) supabase.removeChannel(integrationChannel);
+      if (chatChannel) supabase.removeChannel(chatChannel);
     };
   }, []);
 
@@ -160,17 +195,29 @@ export default function WorkspacePage() {
     e.preventDefault();
     if (!inputValue.trim() || !userId) return;
 
+    const userPrompt = inputValue;
+    setInputValue("");
     setIsProcessing(true);
 
     try {
+      const { error: userInsertError } = await supabase
+        .from("chat_history")
+        .insert({ user_id: userId, sender: "user", message: userPrompt });
+
+      if (!userInsertError) {
+        setChatHistory(prev => [...prev, { sender: "user", message: userPrompt }]);
+      }
+
       const response = await fetch("/api/agent/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ command: inputValue, uid: userId }),
+        body: JSON.stringify({ command: userPrompt, uid: userId }),
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed sequence processing layout map.");
+
+      let finalAgentResponse = "";
 
       if (data.actionStaged && data.type === "GMAIL") {
         setStagedAction({
@@ -178,13 +225,19 @@ export default function WorkspacePage() {
           subject: data.payload.subject,
           emailBody: data.payload.body,
         });
+        finalAgentResponse = `Staged an email action layout for ${data.payload.to}.`;
         triggerToast("Operational action staged into validation card.", "success");
       } else {
-        triggerToast(data.message || "Command successfully filed.", "success");
+        finalAgentResponse = data.message || "Command logged completely.";
+        triggerToast(finalAgentResponse, "success");
       }
 
-      setRecentHistory(prev => [inputValue, ...prev]);
-      setInputValue("");
+      await supabase
+        .from("chat_history")
+        .insert({ user_id: userId, sender: "agent", message: finalAgentResponse });
+
+      setChatHistory(prev => [...prev, { sender: "agent", message: finalAgentResponse }]);
+
     } catch (error: any) {
       triggerToast(error.message, "error");
     } finally {
@@ -228,12 +281,13 @@ export default function WorkspacePage() {
       )}
 
       <aside className="w-64 border-r border-[#F1F5F9] bg-[#FAFAFA] flex flex-col justify-between shrink-0 h-screen">
-        <div className="p-5 space-y-6">
+        <div className="p-5 space-y-6 overflow-y-auto scrollbar-none flex-1">
           <div>
             <div className="text-xl font-bold tracking-tight text-[#0F172A] mb-6">LOOP</div>
             <button className="w-full bg-[#2563EB] text-white py-2.5 rounded-xl font-medium text-sm shadow-sm">New Chat</button>
           </div>
           <hr className="border-[#E2E8F0]" />
+          
           <div className="space-y-2.5">
             <div className="text-[11px] font-medium text-[#64748B]">Connected Apps</div>
             {connectedApps.length === 0 ? (
@@ -242,9 +296,25 @@ export default function WorkspacePage() {
               connectedApps.map((app, i) => (
                 <div key={i} className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-[#334155]">
                   <div className={`w-6 h-6 rounded-md flex items-center justify-center ${app.bg} ${app.color}`}>
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={app.icon}></path></svg>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d={app.icon}></path></svg>
                   </div>
                   <span>{app.name}</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <hr className="border-[#E2E8F0]" />
+
+          <div className="space-y-1">
+            <div className="text-[11px] font-medium text-[#64748B] mb-2">Recent Conversations</div>
+            {chatHistory.filter(c => c.sender === "user").length === 0 ? (
+              <div className="text-xs text-[#94A3B8] px-3 italic">No past chat files.</div>
+            ) : (
+              chatHistory.filter(c => c.sender === "user").slice(-6).reverse().map((chat, i) => (
+                <div key={i} className="w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs text-[#475569] truncate">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#CBD5E1] shrink-0" />
+                  <span className="truncate">{chat.message}</span>
                 </div>
               ))
             )}
@@ -255,10 +325,24 @@ export default function WorkspacePage() {
 
       <main className="flex-1 flex flex-col justify-between relative h-screen">
         <div className="flex-1 overflow-y-auto px-6 pb-32 pt-24 flex flex-col items-center">
-          {!stagedAction && !isProcessing && (
+          {chatHistory.length === 0 && !stagedAction && !isProcessing && (
             <div className="my-auto text-center space-y-4 max-w-2xl">
               <h1 className="text-3xl font-semibold tracking-tight">Loop Agent Console</h1>
               <p className="text-sm text-[#94A3B8]">Issue system instructions directly to your linked operational application pipelines.</p>
+            </div>
+          )}
+
+          {chatHistory.length > 0 && !stagedAction && (
+            <div className="w-full max-w-2xl space-y-4 mb-auto mt-4">
+              {chatHistory.map((item, index) => (
+                <div key={index} className={`flex flex-col ${item.sender === "user" ? "items-end" : "items-start"}`}>
+                  <div className={`px-4 py-2.5 rounded-2xl max-w-[85%] text-sm ${
+                    item.sender === "user" ? "bg-slate-100 text-[#0F172A]" : "bg-blue-50/50 border border-blue-100 text-[#1E3A8A]"
+                  }`}>
+                    {item.message}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
