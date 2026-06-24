@@ -1,9 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Initialize the SDK using your pulled Vercel environment variable
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// Forces Next.js to read your Vercel Dashboard variables live on every single request
+export const dynamic = 'force-dynamic';
 
-// Temporary contact registry to mock resolution for the approval loop
 const contacts: Record<string, string> = {
   john: "john@example.com",
   alice: "alice@example.com",
@@ -12,32 +11,40 @@ const contacts: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
+    // 1. Pull the key inside the server execution block
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    // If Vercel is hiding the key, return an explicit error directly to the chat screen
+    if (!apiKey) {
+      return Response.json(
+        { role: "assistant", content: "🚨 SYSTEM BACKEND ERROR: GEMINI_API_KEY is missing or undefined in your Vercel Project Dashboard variables." },
+        { status: 500 }
+      );
+    }
+
+    // 2. Initialize the SDK with the verified dashboard key
+    const genAI = new GoogleGenerativeAI(apiKey);
     const { messages } = await req.json();
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim().toLowerCase();
 
-    // ==========================================
-    // 1. ADVANCED INTERCEPTOR FOR EMAIL DRAFTS
-    // ==========================================
+    // 3. Intercept Email Draft Automation requests
     if (cleanInput.startsWith("@gmail draft")) {
-      // Direct extraction layer to determine recipient name
       const words = cleanInput.split(" ");
       const toIndex = words.indexOf("to");
       const name = toIndex !== -1 && words[toIndex + 1] ? words[toIndex + 1] : "";
       const resolvedEmail = contacts[name] || "unknown@example.com";
 
-      // Configure Gemini 3.5 Flash specifically for writing the draft block
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-3.5-flash",
+        model: "gemini-1.5-flash", 
         systemInstruction: "You are an executive assistant writing clean, concise email drafts. Output ONLY the raw body copy of the email. Do not include metadata, subjects, or robotic intro lines."
       });
 
-      const generationPrompt = `Write an optimized professional email draft based on this request: "${lastMessage}". Ensure the layout uses clean paragraph breaks. Do not wrap text in quotes or provide alternative options.`;
+      const generationPrompt = `Write an optimized professional email draft based on this request: "${lastMessage}". Ensure the layout uses clean paragraph breaks. Do not wrap text in quotes.`;
       
       const result = await model.generateContent(generationPrompt);
       const responseText = (await result.response).text().trim();
 
-      // Return structural data payload that matches your frontend message schema
       return Response.json({
         role: "assistant",
         isDraft: true,
@@ -47,13 +54,10 @@ export async function POST(req: Request) {
       });
     }
 
-    // ==========================================
-    // 2. DEFAULT CHAT PATH - FRONTIER CLASS
-    // ==========================================
-    // Leverage Gemini 3.5 Flash's reasoning capabilities for standard chat queries
+    // 4. Default Agent Chat Path
     const defaultModel = genAI.getGenerativeModel({ 
-      model: "gemini-3.5-flash",
-      systemInstruction: `You are an elite, highly intelligent AI collaborator. Your tone is professional, direct, and completely devoid of fluff. You optimize for operational speed and accuracy. If the user mentions an action with an '@' trigger (like @gmail), guide them or trigger the functional response layout instantly.`
+      model: "gemini-1.5-flash",
+      systemInstruction: "You are an elite, highly intelligent AI collaborator. Your tone is professional, direct, and completely devoid of fluff."
     });
 
     const chatResult = await defaultModel.generateContent(lastMessage);
@@ -65,9 +69,9 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("API error details:", error);
+    console.error("Backend compiler error:", error);
     return Response.json(
-      { role: "assistant", content: `API processing failed: ${error.message || 'Unknown compilation error'}` },
+      { role: "assistant", content: `🚨 GOOGLE API ERROR: ${error.message || 'Handshake rejected by Gemini platform.'}` },
       { status: 500 }
     );
   }
