@@ -49,6 +49,7 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
   const [inputValue, setInputValue] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [showConnectedApps, setShowConnectedApps] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Close panel on Escape key
   useEffect(() => {
@@ -68,9 +69,9 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
     setConversations([...conversations, newConv]);
   };
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
@@ -80,6 +81,40 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
 
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: userMessage.content }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const assistantMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: 'assistant',
+        content: data.content || 'I received your message.'
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getInitials = (nameStr: string): string => {
@@ -256,6 +291,13 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
                   </div>
                 </div>
               ))}
+              {isLoading && (
+                <div className="flex w-full justify-start">
+                  <div className="bg-gray-100 text-gray-400 rounded-lg px-4 py-2.5 text-sm">
+                    Thinking...
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -275,12 +317,13 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Tell Loop what you need..."
-              className="flex-1 bg-gray-100 text-gray-900 rounded-lg px-4 py-2.5 placeholder-gray-400 outline-none text-sm border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors"
+              disabled={isLoading}
+              className="flex-1 bg-gray-100 text-gray-900 rounded-lg px-4 py-2.5 placeholder-gray-400 outline-none text-sm border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors disabled:opacity-50"
             />
 
             <button 
               type="submit"
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isLoading}
               className="bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 disabled:opacity-50 transition-opacity shrink-0 hover:bg-blue-600"
             >
               <Send size={14} />
@@ -300,7 +343,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
         {/* ========== CONNECTED APPS PANEL ========== */}
         <div className={`fixed right-0 top-0 h-full w-[320px] bg-white border-l border-gray-200 z-50 p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out shadow-xl ${showConnectedApps ? 'translate-x-0' : 'translate-x-full'}`}>
           
-          {/* Panel Header */}
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-lg font-semibold text-gray-900">Connected Apps</h2>
             <button 
@@ -312,7 +354,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
           </div>
           <p className="text-sm text-gray-500 mb-6">Manage your integrations</p>
 
-          {/* Gmail Card — Active */}
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4">
             <div className="flex items-center gap-2">
               <Mail size={18} className="text-red-500" />
@@ -328,7 +369,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
             </button>
           </div>
 
-          {/* Calendar Card — Coming Soon */}
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4 opacity-60">
             <div className="flex items-center gap-2">
               <Calendar size={18} className="text-blue-500" />
@@ -339,7 +379,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
             <p className="text-xs text-gray-400 mt-3">Coming in V1.1</p>
           </div>
 
-          {/* Drive Card — Coming Soon */}
           <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-4 opacity-60">
             <div className="flex items-center gap-2">
               <HardDrive size={18} className="text-yellow-500" />
@@ -350,7 +389,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
             <p className="text-xs text-gray-400 mt-3">Coming in V1.1</p>
           </div>
 
-          {/* Bottom Note */}
           <p className="text-xs text-gray-400 text-center mt-8">More integrations coming soon.</p>
         </div>
       </main>
