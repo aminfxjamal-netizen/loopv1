@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
       // Generate draft with AI
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.5-pro",
+        model: "gemini-2.0-flash",
         systemInstruction: `You are an executive assistant writing professional emails. 
 Output valid JSON only. No markdown. No code blocks. Just raw JSON.
 Format: {"subject": "The subject line here", "body": "The email body here"}
@@ -96,7 +96,7 @@ Rules:
 
     // ========== DEFAULT CHAT FLOW ==========
     const defaultModel = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-pro",
+      model: "gemini-2.0-flash",
       systemInstruction: "You are an elite, highly intelligent AI collaborator. Your tone is professional and direct. You help users manage emails, schedule meetings, and get work done. Keep responses concise."
     });
 
