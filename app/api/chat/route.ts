@@ -96,7 +96,7 @@ Rules:
 
     // ========== DEFAULT CHAT FLOW ==========
     const defaultModel = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       systemInstruction: "You are an elite, highly intelligent AI collaborator. Your tone is professional and direct. You help users manage emails, schedule meetings, and get work done. Keep responses concise."
     });
 
