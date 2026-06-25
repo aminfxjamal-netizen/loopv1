@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
       // Generate draft with AI
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-pro",
         systemInstruction: `You are an executive assistant writing professional emails. 
 Output valid JSON only. No markdown. No code blocks. Just raw JSON.
 Format: {"subject": "The subject line here", "body": "The email body here"}
