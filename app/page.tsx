@@ -34,7 +34,9 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[#080808] text-white font-sans overflow-x-hidden">
       {/* NAVBAR */}
       <nav className="flex items-center justify-between px-4 md:px-6 py-5 max-w-7xl mx-auto">
-        <div className="text-2xl font-bold tracking-tight">Loop</div>
+        <Link href="/" className="flex items-center">
+  <img src="/logo.png" alt="Loop" className="h-8 w-auto" />
+</Link>
         <div className="flex items-center gap-3 md:gap-4">
           <Link href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log in</Link>
           <Link href="/signup" className="bg-white text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Sign up</Link>
