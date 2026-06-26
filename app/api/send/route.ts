@@ -6,7 +6,7 @@ const dailyLimits: Map<string, number> = new Map();
 
 export async function POST(req: Request) {
   try {
-    const { to, subject, body, userId } = await req.json();
+    const { to, subject, body, userId, gmailUser, gmailAppPassword } = await req.json();
 
     if (!to || !subject || !body || !userId) {
       return Response.json(
@@ -18,8 +18,18 @@ export async function POST(req: Request) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
       return Response.json(
-        { success: false, error: "Invalid email address" },
+        { success: false, error: "Invalid recipient email address" },
         { status: 400 }
+      );
+    }
+
+    const sender = gmailUser || process.env.GMAIL_USER;
+    const password = gmailAppPassword || process.env.GMAIL_APP_PASSWORD;
+
+    if (!sender || !password) {
+      return Response.json(
+        { success: false, error: "Gmail not configured. Connect your Gmail in the Connected Apps panel." },
+        { status: 500 }
       );
     }
 
@@ -40,26 +50,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const gmailUser = process.env.GMAIL_USER;
-    const gmailPass = process.env.GMAIL_APP_PASSWORD;
-
-    if (!gmailUser || !gmailPass) {
-      return Response.json(
-        { success: false, error: "Gmail not configured. Add GMAIL_USER and GMAIL_APP_PASSWORD to Vercel." },
-        { status: 500 }
-      );
-    }
-
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: gmailUser,
-        pass: gmailPass
+        user: sender,
+        pass: password
       }
     });
 
     const info = await transporter.sendMail({
-      from: gmailUser,
+      from: sender,
       to: to,
       subject: subject,
       text: body
@@ -73,7 +73,8 @@ export async function POST(req: Request) {
       messageId: info.messageId,
       remaining: remaining,
       limit: 10,
-      message: `Email sent to ${to}. ${remaining} messages remaining today.`
+      from: sender,
+      message: `Email sent from ${sender} to ${to}. ${remaining} messages remaining today.`
     });
 
   } catch (error: any) {
