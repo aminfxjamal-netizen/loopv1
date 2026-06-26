@@ -12,7 +12,8 @@ import {
   Mail,
   Calendar,
   HardDrive,
-  Layers
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 export interface User {
@@ -37,6 +38,9 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  isDraft?: boolean;
+  recipient?: string;
+  subject?: string;
 }
 
 interface WorkspaceProps {
@@ -51,7 +55,6 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
   const [showConnectedApps, setShowConnectedApps] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Close panel on Escape key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowConnectedApps(false);
@@ -61,12 +64,13 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
   }, []);
 
   const handleCreateConversation = () => {
+    setMessages([]);
     const newId = Math.random().toString(36).substring(7);
     const newConv: Conversation = {
       id: newId,
-      title: `Conversation ${conversations.length + 1}`
+      title: `New Conversation`
     };
-    setConversations([...conversations, newConv]);
+    setConversations([newConv, ...conversations]);
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -92,20 +96,21 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
         })
       });
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
       const data = await response.json();
 
       const assistantMessage: Message = {
         id: Math.random().toString(36).substring(7),
         role: 'assistant',
-        content: data.content || 'I received your message.'
+        content: data.content || 'I received your message.',
+        isDraft: data.isDraft || false,
+        recipient: data.recipient || '',
+        subject: data.subject || ''
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
+    } catch {
       const errorMessage: Message = {
         id: Math.random().toString(36).substring(7),
         role: 'assistant',
@@ -117,27 +122,66 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
     }
   };
 
+  const handleApproveDraft = async (message: Message) => {
+    if (!message.recipient || !message.subject) return;
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: message.recipient,
+          subject: message.subject,
+          body: message.content,
+          userId: 'current-user'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        const successMessage: Message = {
+          id: Math.random().toString(36).substring(7),
+          role: 'assistant',
+          content: `✅ Email sent to ${message.recipient}. ${data.remaining} messages remaining today.`
+        };
+        setMessages(prev => [...prev, successMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: Math.random().toString(36).substring(7),
+          role: 'assistant',
+          content: `❌ Failed to send: ${data.error || 'Unknown error'}`
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch {
+      const errorMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: 'assistant',
+        content: '❌ Failed to send email. Please try again.'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getInitials = (nameStr: string): string => {
     if (!nameStr) return "US";
     const parts = nameStr.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    if (parts[0].length >= 2) {
-      return parts[0].substring(0, 2).toUpperCase();
-    }
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    if (parts[0].length >= 2) return parts[0].substring(0, 2).toUpperCase();
     return parts[0][0].toUpperCase();
   };
 
   const currentUser = user || DEFAULT_USER;
 
   return (
-    <div className="flex h-screen w-full bg-white text-gray-900 overflow-hidden font-sans select-none">
-      {/* ========== SIDEBAR ========== */}
+    <div className="flex h-screen w-full bg-white text-gray-900 overflow-hidden font-sans">
+      {/* SIDEBAR */}
       <aside className="w-[240px] bg-gray-50 border-r border-gray-200 flex flex-col h-full p-4 shrink-0">
-        <div className="text-2xl font-bold tracking-tight text-gray-900 mb-4">
-          Loop
-        </div>
+        <div className="text-2xl font-bold tracking-tight text-gray-900 mb-4">Loop</div>
 
         <button 
           onClick={handleCreateConversation}
@@ -147,44 +191,32 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
           New Conversation
         </button>
 
-        <div className="text-gray-400 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">
-          MAIN
-        </div>
+        <div className="text-gray-400 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">MAIN</div>
         <nav className="space-y-1">
           <button className="flex items-center w-full text-left py-2 px-3 bg-blue-50 rounded-lg text-sm font-medium text-blue-700">
             AI Chat
           </button>
-          
           <div className="flex items-center justify-between py-2 px-3 text-sm font-medium text-gray-400">
             <span>Email</span>
             <span className="bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-normal">Soon</span>
           </div>
-
           <div className="flex items-center justify-between py-2 px-3 text-sm font-medium text-gray-400">
             <span>Calendar</span>
             <span className="bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-normal">Soon</span>
           </div>
-
           <div className="flex items-center justify-between py-2 px-3 text-sm font-medium text-gray-400">
             <span>Files</span>
             <span className="bg-gray-200 text-gray-500 text-[10px] px-2 py-0.5 rounded-full font-normal">Soon</span>
           </div>
         </nav>
 
-        <div className="text-gray-400 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">
-          RECENT
-        </div>
+        <div className="text-gray-400 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">RECENT</div>
         <div className="flex-1 overflow-y-auto space-y-1 max-h-[calc(100vh-340px)]">
           {conversations.length === 0 ? (
-            <div className="text-gray-400 text-sm italic px-3 py-1">
-              No conversations yet
-            </div>
+            <div className="text-gray-400 text-sm italic px-3 py-1">No conversations yet</div>
           ) : (
             conversations.map((conv) => (
-              <div 
-                key={conv.id} 
-                className="flex items-center gap-2 py-2 px-3 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer truncate"
-              >
+              <div key={conv.id} className="flex items-center gap-2 py-2 px-3 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer truncate">
                 <MessageSquare size={14} className="shrink-0 text-gray-400" />
                 <span className="truncate">{conv.title}</span>
               </div>
@@ -201,11 +233,7 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
           {user !== null && (
             <div className="flex items-center gap-3 px-3">
               {currentUser.avatarUrl ? (
-                <img 
-                  src={currentUser.avatarUrl} 
-                  alt={currentUser.name} 
-                  className="h-8 w-8 rounded-full object-cover shrink-0"
-                />
+                <img src={currentUser.avatarUrl} alt={currentUser.name} className="h-8 w-8 rounded-full object-cover shrink-0" />
               ) : (
                 <div className="h-8 w-8 rounded-full bg-blue-500 text-white text-xs font-semibold flex items-center justify-center shrink-0">
                   {getInitials(currentUser.name)}
@@ -213,18 +241,15 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
               )}
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-medium text-gray-900 truncate">{currentUser.name}</span>
-                {currentUser.role && (
-                  <span className="text-xs text-gray-500 truncate">{currentUser.role}</span>
-                )}
+                {currentUser.role && <span className="text-xs text-gray-500 truncate">{currentUser.role}</span>}
               </div>
             </div>
           )}
         </div>
       </aside>
 
-      {/* ========== MAIN CONTENT AREA ========== */}
+      {/* MAIN CONTENT */}
       <main className="flex-1 flex flex-col h-full relative bg-white">
-        
         {/* CONNECTED APPS BUTTON */}
         <button 
           onClick={() => setShowConnectedApps(true)}
@@ -237,8 +262,11 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
         {/* CHAT AREA */}
         <div className="flex-1 overflow-y-auto p-6 flex flex-col">
           {messages.length === 0 ? (
-            /* EMPTY STATE */
+            /* EMPTY STATE — BIG WRITING PAD FEEL */
             <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto my-auto">
+              <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center mb-6">
+                <Sparkles size={24} className="text-blue-500" />
+              </div>
               <h1 className="text-3xl font-semibold text-gray-900 tracking-tight">
                 What do you want to get done?
               </h1>
@@ -246,7 +274,7 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
                 Tell Loop what you need in plain language. It will handle the rest.
               </p>
 
-              <div className="flex flex-wrap gap-3 mt-6 justify-center">
+              <div className="flex flex-wrap gap-3 mt-8 justify-center">
                 <button 
                   onClick={() => setInputValue("Draft a client update email")}
                   className="bg-blue-50 text-blue-600 text-sm px-4 py-2 rounded-full cursor-pointer hover:bg-blue-100 transition-colors border border-blue-200"
@@ -274,26 +302,53 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
             </div>
           ) : (
             /* CHAT MESSAGES */
-            <div className="space-y-4 max-w-3xl w-full mx-auto pb-24">
+            <div className="space-y-6 max-w-3xl w-full mx-auto pb-32">
               {messages.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div 
-                    className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
-                      msg.role === 'user' 
-                        ? 'bg-blue-500 text-white font-normal' 
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
-                  >
-                    {msg.content}
-                  </div>
+                <div key={msg.id} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.isDraft ? (
+                    /* DRAFT CARD */
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm max-w-[85%] w-full">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Mail size={16} className="text-blue-500" />
+                        <span className="text-xs font-medium text-blue-600 uppercase tracking-wide">Draft Email</span>
+                      </div>
+                      <div className="text-xs text-gray-400 mb-1">To: {msg.recipient}</div>
+                      <div className="text-sm font-semibold text-gray-900 mb-3">{msg.subject}</div>
+                      <div className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed border-l-2 border-gray-200 pl-4">{msg.content}</div>
+                      <div className="flex gap-2 mt-5">
+                        <button 
+                          onClick={() => handleApproveDraft(msg)}
+                          disabled={isLoading}
+                          className="bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                        >
+                          {isLoading ? 'Sending...' : 'Approve & Send'}
+                        </button>
+                        <button className="bg-gray-100 text-gray-700 text-sm px-4 py-2.5 rounded-lg hover:bg-gray-200 transition">
+                          Edit
+                        </button>
+                        <button className="text-gray-400 text-sm px-4 py-2.5 hover:text-gray-600 transition ml-auto">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* NORMAL MESSAGE */
+                    <div 
+                      className={`max-w-[80%] rounded-2xl px-5 py-3 text-sm leading-relaxed ${
+                        msg.role === 'user' 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-100 text-gray-900'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  )}
                 </div>
               ))}
               {isLoading && (
                 <div className="flex w-full justify-start">
-                  <div className="bg-gray-100 text-gray-400 rounded-lg px-4 py-2.5 text-sm">
+                  <div className="bg-gray-100 text-gray-400 rounded-2xl px-5 py-3 text-sm flex items-center gap-2">
+                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse"></span>
                     Thinking...
                   </div>
                 </div>
@@ -302,53 +357,53 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
           )}
         </div>
 
-        {/* INPUT BAR */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto flex items-center gap-3">
-            <button 
-              type="button"
-              className="text-gray-400 hover:text-gray-600 p-1 shrink-0"
-            >
-              <Paperclip size={20} />
-            </button>
-            
-            <input 
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Tell Loop what you need..."
-              disabled={isLoading}
-              className="flex-1 bg-gray-100 text-gray-900 rounded-lg px-4 py-2.5 placeholder-gray-400 outline-none text-sm border border-gray-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 transition-colors disabled:opacity-50"
-            />
+        {/* INPUT BAR — BIG WRITING PAD STYLE */}
+        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 pb-6">
+          <form onSubmit={handleSendMessage} className="max-w-3xl mx-auto">
+            <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-2xl p-3 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <button type="button" className="text-gray-400 hover:text-gray-600 p-2 shrink-0 mt-0.5">
+                <Paperclip size={18} />
+              </button>
+              
+              <textarea
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Tell Loop what you need..."
+                disabled={isLoading}
+                rows={2}
+                className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none text-sm resize-none disabled:opacity-50 min-h-[48px]"
+              />
 
-            <button 
-              type="submit"
-              disabled={!inputValue.trim() || isLoading}
-              className="bg-blue-500 text-white px-4 py-2.5 rounded-lg font-medium text-sm flex items-center gap-2 disabled:opacity-50 transition-opacity shrink-0 hover:bg-blue-600"
-            >
-              <Send size={14} />
-              Send
-            </button>
+              <button 
+                type="submit"
+                disabled={!inputValue.trim() || isLoading}
+                className="bg-blue-500 text-white p-2.5 rounded-xl font-medium text-sm flex items-center gap-1.5 disabled:opacity-50 transition-opacity shrink-0 hover:bg-blue-600 self-end"
+              >
+                <Send size={14} />
+              </button>
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-3">
+              Press Enter to send • Shift + Enter for new line
+            </p>
           </form>
         </div>
 
-        {/* ========== CONNECTED APPS OVERLAY ========== */}
+        {/* CONNECTED APPS OVERLAY */}
         {showConnectedApps && (
-          <div 
-            className="fixed inset-0 bg-black/20 z-40"
-            onClick={() => setShowConnectedApps(false)}
-          />
+          <div className="fixed inset-0 bg-black/20 z-40" onClick={() => setShowConnectedApps(false)} />
         )}
 
-        {/* ========== CONNECTED APPS PANEL ========== */}
+        {/* CONNECTED APPS PANEL */}
         <div className={`fixed right-0 top-0 h-full w-[320px] bg-white border-l border-gray-200 z-50 p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out shadow-xl ${showConnectedApps ? 'translate-x-0' : 'translate-x-full'}`}>
-          
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-lg font-semibold text-gray-900">Connected Apps</h2>
-            <button 
-              onClick={() => setShowConnectedApps(false)}
-              className="text-gray-400 hover:text-gray-900 transition-colors"
-            >
+            <button onClick={() => setShowConnectedApps(false)} className="text-gray-400 hover:text-gray-900 transition-colors">
               <X size={20} />
             </button>
           </div>
@@ -361,11 +416,8 @@ export default function Workspace({ user = DEFAULT_USER }: WorkspaceProps) {
               <span className="h-2 w-2 bg-green-500 rounded-full ml-auto"></span>
             </div>
             <p className="text-xs text-gray-500 mt-2">Send emails and track follow-ups directly from Loop.</p>
-            <button 
-              onClick={() => console.log("Connect Gmail")}
-              className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition"
-            >
-              Connect
+            <button className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">
+              Connected
             </button>
           </div>
 
