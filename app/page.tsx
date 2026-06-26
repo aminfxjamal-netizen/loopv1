@@ -1,260 +1,293 @@
-'use client';
+"use client";
 
 import { useState, useEffect } from 'react';
+import { ArrowRight, Sparkles, Zap, Shield, Mail, Globe, Check, Play, Pause, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 
-export default function LoopCleanSaaSPage() {
-  const [mounted, setMounted] = useState(false);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [activePane, setActivePane] = useState<'chat' | 'projects' | 'search'>('chat');
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const faqData = [
-    {
-      q: "What is Loop?",
-      a: "Loop is a unified software application that combines an AI assistant interface, project management task lists, and notes into a single digital workspace container."
-    },
-    {
-      q: "How does the free trial work?",
-      a: "You receive full operational access to all core application interfaces for 14 days without restriction. This allows you to completely test the system workflow."
-    },
-    {
-      q: "Do I need a credit card?",
-      a: "No. Loop does not ask for or store credit card data during the initial 14-day free trial registration process."
-    },
-    {
-      q: "Can I cancel anytime?",
-      a: "Yes. You can pause, adjust, or delete your account workspace immediately from your workspace settings tab at any point."
-    }
+export default function LandingPage() {
+  const [typedText, setTypedText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(100);
+  
+  const commands = [
+    "Draft an email to Sarah about the Q3 report...",
+    "Follow up with the design team...",
+    "Schedule a meeting for tomorrow 2 PM...",
+    "Summarize the contract from last week...",
   ];
 
+  useEffect(() => {
+    const currentCommand = commands[loopNum % commands.length];
+    
+    if (!isDeleting && typedText === currentCommand) {
+      setTimeout(() => setIsDeleting(true), 2000);
+      setTypingSpeed(50);
+    } else if (isDeleting && typedText === '') {
+      setIsDeleting(false);
+      setLoopNum(loopNum + 1);
+      setTypingSpeed(100);
+    } else {
+      const timeout = setTimeout(() => {
+        setTypedText(
+          isDeleting 
+            ? currentCommand.substring(0, typedText.length - 1)
+            : currentCommand.substring(0, typedText.length + 1)
+        );
+      }, typingSpeed);
+      return () => clearTimeout(timeout);
+    }
+  }, [typedText, isDeleting]);
+
   return (
-    <div className={`min-h-screen bg-[#FFFFFF] text-[#111827] font-sans antialiased transition-opacity duration-500 select-none ${mounted ? 'opacity-100' : 'opacity-0'}`}>
-      
-      {/* NAVIGATION */}
-      <header className="h-16 border-b border-[#E5E7EB] bg-[#FFFFFF] flex items-center justify-between px-6 md:px-12 sticky top-0 z-50">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-[#2563EB] flex items-center justify-center">
-              <div className="w-2 h-2 rounded-sm bg-[#FFFFFF]" />
-            </div>
-            <span className="text-sm font-bold tracking-tight text-[#111827]">Loop</span>
-          </div>
-          <nav className="hidden md:flex items-center gap-6 text-xs font-semibold text-[#6B7280]">
-            <Link href="#features" className="hover:text-[#2563EB] transition">Features</Link>
-            <Link href="#pricing" className="hover:text-[#2563EB] transition">Pricing</Link>
-          </nav>
-        </div>
+    <div className="min-h-screen bg-[#080808] text-white font-sans overflow-x-hidden">
+      {/* NAVBAR */}
+      <nav className="flex items-center justify-between px-6 py-5 max-w-7xl mx-auto">
+        <div className="text-2xl font-bold tracking-tight">Loop</div>
         <div className="flex items-center gap-4">
-          <Link href="/login" className="text-xs font-bold text-[#6B7280] hover:text-[#111827] transition">
-            Login
-          </Link>
-          <Link href="/signup" className="h-9 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-[#FFFFFF] text-xs font-semibold rounded-lg transition flex items-center justify-center shadow-sm">
-            Start Free Trial
-          </Link>
+          <Link href="/login" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Log in</Link>
+          <Link href="/signup" className="bg-white text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">Sign up</Link>
         </div>
-      </header>
+      </nav>
 
-      {/* HERO SECTION */}
-      <section className="max-w-4xl mx-auto px-6 pt-16 pb-12 text-center space-y-6">
-        <div className="inline-flex bg-[#2563EB]/5 border border-[#2563EB]/10 text-[#2563EB] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wide">
-          AI Workspace For Modern Individuals
+      {/* HERO */}
+      <section className="max-w-7xl mx-auto px-6 pt-20 pb-32 text-center relative">
+        {/* Gradient orb */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-500/20 rounded-full blur-[120px] -z-10"></div>
+        
+        <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-gray-300 text-sm font-medium px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
+          <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+          Now in Beta — 10 emails/day free
         </div>
-        <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#111827] leading-tight">
-          Run Your Work From <br />One Intelligent Workspace
+
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1] max-w-5xl mx-auto">
+          Your inbox is a to-do list
+          <br />
+          <span className="text-blue-400">other people wrote.</span>
+          <br />
+          Take it back.
         </h1>
-        <p className="text-base text-[#6B7280] max-w-xl mx-auto leading-relaxed font-medium">
-          Chat with AI, organize projects, manage tasks, and keep everything in one place.
+
+        <p className="text-lg md:text-xl text-gray-400 mt-8 max-w-2xl mx-auto leading-relaxed">
+          Loop turns natural language into real actions across Gmail. Draft emails. Schedule follow-ups. Never lose a thread again. All from one command line.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <Link href="/signup" className="w-full sm:w-auto h-11 px-6 bg-[#2563EB] hover:bg-[#1D4ED8] text-[#FFFFFF] text-xs font-bold rounded-xl transition flex items-center justify-center shadow-md">
-            Start Free Trial
-          </Link>
-          <Link href="#pricing" className="w-full sm:w-auto h-11 px-6 border border-[#E5E7EB] bg-[#FFFFFF] hover:border-[#6B7280] text-[#111827] text-xs font-bold rounded-xl transition flex items-center justify-center">
-            View Pricing
-          </Link>
-        </div>
-        <div className="text-[11px] font-semibold text-[#9CA3AF] tracking-wide uppercase pt-1">
-          14-Day Free Trial • No Credit Card Required
-        </div>
-      </section>
 
-      {/* PRODUCT SHOWCASE */}
-      <section className="max-w-4xl mx-auto px-6 pb-20">
-        <div className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl shadow-xl overflow-hidden min-h-[360px] flex grid grid-cols-12">
-          <div className="col-span-3 bg-[#F9FAFB] border-r border-[#E5E7EB] p-4 space-y-4 text-left">
-            <div className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-wider">Loop Console</div>
-            <div className="space-y-1">
-              <button onClick={() => setActivePane('chat')} className={`w-full text-left p-2 rounded text-xs font-bold transition ${activePane === 'chat' ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'text-[#6B7280]'}`}>Chat Interface</button>
-              <button onClick={() => setActivePane('projects')} className={`w-full text-left p-2 rounded text-xs font-bold transition ${activePane === 'projects' ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'text-[#6B7280]'}`}>Projects</button>
-              <button onClick={() => setActivePane('search')} className={`w-full text-left p-2 rounded text-xs font-bold transition ${activePane === 'search' ? 'bg-[#2563EB]/5 text-[#2563EB]' : 'text-[#6B7280]'}`}>Search</button>
+        {/* Live typing demo */}
+        <div className="mt-12 max-w-2xl mx-auto bg-[#0d0d0d] border border-white/10 rounded-2xl p-6 text-left font-mono">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-3 w-3 rounded-full bg-red-500/80"></div>
+            <div className="h-3 w-3 rounded-full bg-yellow-500/80"></div>
+            <div className="h-3 w-3 rounded-full bg-green-500/80"></div>
+            <span className="text-xs text-gray-500 ml-2">Loop Workspace</span>
+          </div>
+          <div className="text-blue-400 text-lg">
+            <span className="text-gray-500">&gt; </span>
+            {typedText}
+            <span className="inline-block w-2 h-5 bg-blue-400 ml-0.5 animate-pulse align-middle"></span>
+          </div>
+          <div className="mt-6 bg-white/5 rounded-lg p-4 border border-white/5">
+            <div className="text-xs text-gray-500 mb-2">Loop Response</div>
+            <div className="text-sm text-gray-300">
+              <span className="text-green-400">✓</span> Draft ready. Subject: "Q3 Report Update"<br />
+              To: sarah@company.com<br />
+              <span className="text-gray-600">Waiting for your approval...</span>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <span className="bg-white text-black text-xs font-medium px-3 py-1.5 rounded-md">Approve & Send</span>
+              <span className="bg-white/10 text-white text-xs px-3 py-1.5 rounded-md">Edit</span>
             </div>
           </div>
-          <div className="col-span-9 p-6 text-left bg-[#FFFFFF]">
-            {activePane === 'chat' && (
-              <div className="space-y-3 font-medium">
-                <div className="p-3 bg-gray-50 border border-gray-100 rounded-lg text-xs text-gray-600 max-w-md">"Outline the goals for our upcoming team milestone."</div>
-                <div className="p-3 bg-[#2563EB]/5 border border-[#2563EB]/10 rounded-lg text-xs text-[#111827] max-w-md ml-auto"><strong>Loop AI:</strong> Milestone mapped. I have updated your tracking cards under the projects view configuration tab.</div>
-              </div>
-            )}
-            {activePane === 'projects' && (
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                {['Draft content roadmap', 'Review database index mechanics', 'Set up customer support routes'].map((task, i) => (
-                  <div key={i} className="p-3 border border-gray-100 rounded-lg text-xs font-bold flex items-center gap-2">
-                    <div className="w-3.5 h-3.5 border border-gray-200 rounded" />
-                    <span>{task}</span>
+        </div>
+
+        <div className="flex items-center justify-center gap-4 mt-10">
+          <Link href="/signup" className="bg-white text-black text-base font-medium px-8 py-4 rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2 shadow-2xl shadow-white/10">
+            Get Started Free
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+        <p className="text-sm text-gray-500 mt-4">No credit card. 10 emails/day. No catch.</p>
+      </section>
+
+      {/* THE SHIFT */}
+      <section className="max-w-7xl mx-auto px-6 py-32 border-t border-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div>
+            <p className="text-sm text-blue-400 font-medium mb-4 uppercase tracking-widest">The Problem</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
+              You live in your inbox.
+              <br />
+              <span className="text-gray-400">It wasn't designed for that.</span>
+            </h2>
+            <p className="text-gray-400 leading-relaxed">
+              Gmail is a list of other people's priorities. Every unread email is a task you didn't choose. Every follow-up you forgot is a deal you lost. You're not lazy. Your tools are broken.
+            </p>
+          </div>
+          <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-6 relative overflow-hidden">
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+                  <div className="h-8 w-8 rounded-full bg-gray-700 shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="h-3 bg-gray-700 rounded w-1/3 mb-2"></div>
+                    <div className="h-2 bg-gray-800 rounded w-2/3"></div>
                   </div>
-                ))}
-              </div>
-            )}
-            {activePane === 'search' && (
-              <div className="space-y-2 pt-2">
-                <div className="h-9 bg-gray-50 border border-gray-200 rounded-lg px-3 flex items-center text-xs text-gray-400 font-medium">Type to search workspace data files instantly...</div>
-                <div className="text-[11px] font-semibold text-gray-400 px-1">Recent: workspace_notes_june.txt</div>
-              </div>
-            )}
+                  <span className="text-xs text-red-400 font-medium">Unread</span>
+                </div>
+              ))}
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#080808] flex items-center justify-center">
+              <span className="text-gray-600 text-sm">This is chaos.</span>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* PRICING SECTION (UPDATED STYLE & PRICES) */}
-      <section id="pricing" className="bg-[#FFFFFF] py-24 border-t border-[#F3F4F6]">
-        <div className="max-w-5xl mx-auto px-6 space-y-12">
-          <div className="text-center space-y-3">
-            <h2 className="text-3xl font-black text-[#111827] tracking-tight">Flexible Plans</h2>
-            <p className="text-sm text-[#6B7280] font-medium">Choose the workspace power that fits your workflow.</p>
+      {/* THE SOLUTION */}
+      <section className="max-w-7xl mx-auto px-6 py-32 border-t border-white/5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <div className="order-2 md:order-1 bg-[#0d0d0d] border border-white/10 rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-3 w-3 rounded-full bg-red-500/80"></div>
+              <div className="h-3 w-3 rounded-full bg-yellow-500/80"></div>
+              <div className="h-3 w-3 rounded-full bg-green-500/80"></div>
+              <span className="text-xs text-gray-500 ml-2">Loop</span>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+                <p className="text-sm text-blue-300">What do you want to get done?</p>
+              </div>
+              <div className="flex justify-end">
+                <div className="bg-white text-black rounded-lg px-4 py-2 text-sm max-w-[80%]">
+                  Follow up with Sarah about the contract
+                </div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                <div className="text-xs text-green-400 mb-2">✓ Draft ready</div>
+                <p className="text-sm text-gray-300">Sarah hasn't replied in 3 days. Here's a polite follow-up.</p>
+                <div className="flex gap-2 mt-3">
+                  <span className="bg-white text-black text-xs font-medium px-3 py-1.5 rounded-md">Approve & Send</span>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* FREE TRIAL */}
-            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 space-y-6 flex flex-col shadow-sm">
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-[#6B7280] uppercase tracking-widest">Free Trial</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-[#111827]">$0</span>
-                  <span className="text-xs font-bold text-[#9CA3AF]">/ 14 days</span>
-                </div>
-              </div>
-              <ul className="space-y-3 flex-1 text-xs font-bold text-[#4B5563]">
-                <li className="flex items-center gap-2">✓ AI Chat Access</li>
-                <li className="flex items-center gap-2">✓ Workspace Search</li>
-                <li className="flex items-center gap-2">✓ Basic Project Cards</li>
-              </ul>
-              <Link href="/signup" className="h-11 w-full border border-[#E5E7EB] hover:bg-[#F9FAFB] text-[#111827] text-xs font-bold rounded-xl transition flex items-center justify-center">
-                Get Started
-              </Link>
-            </div>
-
-            {/* STARTER (UPDATED PRICE) */}
-            <div className="bg-white border border-[#E5E7EB] rounded-2xl p-8 space-y-6 flex flex-col shadow-sm">
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-[#6B7280] uppercase tracking-widest">Starter</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-[#111827]">$19</span>
-                  <span className="text-xs font-bold text-[#9CA3AF]">/ month</span>
-                </div>
-              </div>
-              <ul className="space-y-3 flex-1 text-xs font-bold text-[#4B5563]">
-                <li className="flex items-center gap-2">✓ Unlimited AI Messages</li>
-                <li className="flex items-center gap-2">✓ Advanced Search</li>
-                <li className="flex items-center gap-2">✓ Project File Uploads</li>
-                <li className="flex items-center gap-2">✓ Standard Support</li>
-              </ul>
-              <Link href="/pricing" className="h-11 w-full bg-[#111827] hover:bg-[#1F2937] text-[#FFFFFF] text-xs font-bold rounded-xl transition flex items-center justify-center shadow-md">
-                Choose Starter
-              </Link>
-            </div>
-
-            {/* PRO (UPDATED PRICE & PREMIUM STYLE) */}
-            <div className="bg-white border-2 border-[#2563EB] rounded-2xl p-8 space-y-6 flex flex-col shadow-lg relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#2563EB] text-white text-[9px] font-black tracking-widest uppercase px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-[#2563EB] uppercase tracking-widest">Pro</h3>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-black text-[#111827]">$39</span>
-                  <span className="text-xs font-bold text-[#9CA3AF]">/ month</span>
-                </div>
-              </div>
-              <ul className="space-y-3 flex-1 text-xs font-bold text-[#4B5563]">
-                <li className="flex items-center gap-2">✓ Everything in Starter</li>
-                <li className="flex items-center gap-2">✓ Priority AI Processing</li>
-                <li className="flex items-center gap-2">✓ Early Access to Tools</li>
-                <li className="flex items-center gap-2">✓ Dedicated Support</li>
-              </ul>
-              <Link href="/pricing" className="h-11 w-full bg-[#2563EB] hover:bg-[#1D4ED8] text-[#FFFFFF] text-xs font-bold rounded-xl transition flex items-center justify-center shadow-lg shadow-[#2563EB]/20">
-                Go Pro
-              </Link>
-            </div>
-
+          <div className="order-1 md:order-2">
+            <p className="text-sm text-blue-400 font-medium mb-4 uppercase tracking-widest">The Solution</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6">
+              One command.
+              <br />
+              <span className="text-gray-400">Done.</span>
+            </h2>
+            <p className="text-gray-400 leading-relaxed">
+              Stop switching tabs. Stop setting reminders. Stop writing "just checking in" for the hundredth time. Tell Loop what you need in plain English. It drafts. You approve. It sends. It follows up.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* FAQ SECTION */}
-      <section className="border-t border-[#E5E7EB] bg-[#F9FAFB] py-20">
-        <div className="max-w-2xl mx-auto px-6">
-          <h2 className="text-xl font-bold text-[#111827] text-center mb-8">Frequently Asked Questions</h2>
-          <div className="space-y-3">
-            {faqData.map((faq, idx) => (
-              <div key={idx} className="bg-[#FFFFFF] border border-[#E5E7EB] rounded-xl p-4 shadow-sm">
-                <button onClick={() => setOpenFaq(openFaq === idx ? null : idx)} className="w-full flex justify-between items-center text-left font-bold text-xs text-[#111827] focus:outline-none">
-                  <span>{faq.q}</span>
-                  <span className="text-[#6B7280] font-mono">{openFaq === idx ? '−' : '+'}</span>
-                </button>
-                {openFaq === idx && <p className="text-xs text-[#6B7280] leading-relaxed pt-2.5 transition-all font-medium">{faq.a}</p>}
-              </div>
-            ))}
+      {/* FEATURES */}
+      <section className="max-w-7xl mx-auto px-6 py-32 border-t border-white/5">
+        <div className="text-center mb-16">
+          <p className="text-sm text-blue-400 font-medium mb-4 uppercase tracking-widest">Features</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Built to finish your work</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-8 hover:border-white/10 transition-colors">
+            <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4">
+              <Mail size={20} className="text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Natural Language Email</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">Type what you want. Loop handles the formatting, tone, and sending.</p>
+          </div>
+          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-8 hover:border-white/10 transition-colors">
+            <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4">
+              <RotateCcw size={20} className="text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Automatic Follow-Ups</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">Loop tracks who replied and who didn't. It prompts follow-ups before you forget.</p>
+          </div>
+          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-8 hover:border-white/10 transition-colors">
+            <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4">
+              <Shield size={20} className="text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Approval First</h3>
+            <p className="text-gray-400 text-sm leading-relaxed">Nothing goes out without your okay. Every draft is reviewed. Every send is confirmed.</p>
           </div>
         </div>
       </section>
 
-      {/* FINAL CTA */}
-      <section className="max-w-4xl mx-auto px-6 py-20 text-center space-y-4">
-        <h2 className="text-2xl font-extrabold text-[#111827] tracking-tight">Ready To Try Loop?</h2>
-        <p className="text-xs text-[#6B7280] font-medium max-w-sm mx-auto">Start your free trial today and explore the workspace.</p>
-        <div className="pt-2">
-          <Link href="/signup" className="inline-flex h-11 px-6 bg-[#2563EB] hover:bg-[#1D4ED8] text-[#FFFFFF] text-xs font-bold rounded-xl transition items-center justify-center shadow-md">
-            Start Free Trial
-          </Link>
+      {/* PRICING */}
+      <section className="max-w-7xl mx-auto px-6 py-32 border-t border-white/5">
+        <div className="text-center mb-16">
+          <p className="text-sm text-blue-400 font-medium mb-4 uppercase tracking-widest">Pricing</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight">Start free. Upgrade when ready.</h2>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="border border-white/10 rounded-2xl p-8 flex flex-col bg-[#0d0d0d]">
+            <h3 className="text-lg font-semibold mb-1">Free</h3>
+            <p className="text-gray-400 text-sm mb-4">For getting started</p>
+            <div className="text-4xl font-bold mb-6">$0<span className="text-lg text-gray-500 font-normal">/mo</span></div>
+            <ul className="space-y-3 mb-8 flex-1">
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> 10 emails per day</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> AI chat assistant</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Email drafting</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Follow-up tracking</li>
+            </ul>
+            <Link href="/signup" className="bg-white/10 text-white text-sm font-medium text-center py-2.5 rounded-lg hover:bg-white/20 transition-colors w-full">Get Started</Link>
+          </div>
+          <div className="border-2 border-blue-500 rounded-2xl p-8 flex flex-col bg-[#0d0d0d] relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-full">Most Popular</div>
+            <h3 className="text-lg font-semibold mb-1">Pro</h3>
+            <p className="text-gray-400 text-sm mb-4">For professionals</p>
+            <div className="text-4xl font-bold mb-6">$15<span className="text-lg text-gray-500 font-normal">/mo</span></div>
+            <ul className="space-y-3 mb-8 flex-1">
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> 50 emails per day</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Everything in Free</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Priority AI responses</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Advanced follow-up rules</li>
+            </ul>
+            <Link href="/signup" className="bg-blue-500 text-white text-sm font-medium text-center py-2.5 rounded-lg hover:bg-blue-600 transition-colors w-full">Start Free Trial</Link>
+          </div>
+          <div className="border border-white/10 rounded-2xl p-8 flex flex-col bg-[#0d0d0d]">
+            <h3 className="text-lg font-semibold mb-1">Business</h3>
+            <p className="text-gray-400 text-sm mb-4">For teams</p>
+            <div className="text-4xl font-bold mb-6">$30<span className="text-lg text-gray-500 font-normal">/mo</span></div>
+            <ul className="space-y-3 mb-8 flex-1">
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Unlimited emails</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Everything in Pro</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Team workspace</li>
+              <li className="flex items-center gap-2 text-sm text-gray-300"><Check size={16} className="text-green-500 shrink-0" /> Calendar + Drive integration</li>
+            </ul>
+            <Link href="/signup" className="bg-white/10 text-white text-sm font-medium text-center py-2.5 rounded-lg hover:bg-white/20 transition-colors w-full">Contact Sales</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="max-w-7xl mx-auto px-6 py-32 border-t border-white/5 text-center relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[100px] -z-10"></div>
+        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Stop managing your inbox.</h2>
+        <p className="text-xl text-gray-400 mb-8">Start telling Loop what to do.</p>
+        <Link href="/signup" className="bg-white text-black text-base font-medium px-10 py-4 rounded-xl hover:bg-gray-200 transition-colors inline-flex items-center gap-2 shadow-2xl shadow-white/10">
+          Get Started Free
+          <ArrowRight size={16} />
+        </Link>
+        <p className="text-sm text-gray-500 mt-4">10 emails/day. No credit card. No catch.</p>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-[#E5E7EB] bg-[#FFFFFF] py-12 px-6 md:px-12 text-xs">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-[#6B7280] font-medium">
-          <div className="space-y-2">
-            <p className="font-bold text-[#111827]">Product</p>
-            <div className="flex flex-col gap-1.5">
-              <span className="hover:text-[#2563EB] cursor-pointer transition">Features</span>
-              <span className="hover:text-[#2563EB] cursor-pointer transition">Pricing</span>
-            </div>
+      <footer className="border-t border-white/5 py-12">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-1 text-white font-bold text-lg">
+            <Globe size={16} className="text-blue-400" />
+            Loop
           </div>
-          <div className="space-y-2">
-            <p className="font-bold text-[#111827]">Company</p>
-            <div className="flex flex-col gap-1.5">
-              <span className="hover:text-[#2563EB] cursor-pointer transition">Contact</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="font-bold text-[#111827]">Legal</p>
-            <div className="flex flex-col gap-1.5">
-              <span className="hover:text-[#2563EB] cursor-pointer transition">Privacy Policy</span>
-              <span className="hover:text-[#2563EB] cursor-pointer transition">Terms of Service</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="font-bold text-[#111827]">Loop Technology</p>
-            <p className="text-[10px] text-[#9CA3AF] font-mono mt-0.5">© 2026 Loop Inc. All rights reserved.</p>
+          <div className="flex items-center gap-6 text-sm text-gray-500">
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <span>© 2026 Loop</span>
           </div>
         </div>
       </footer>
-
     </div>
   );
 }
