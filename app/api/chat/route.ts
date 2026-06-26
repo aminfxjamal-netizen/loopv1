@@ -81,12 +81,13 @@ export async function POST(req: Request) {
       }
 
       return Response.json({
-        role: "assistant",
-        isDraft: true,
-        recipient: extractedEmail,
-        subject: subject,
-        content: body
-      });
+  role: "assistant",
+  isDraft: true,
+  recipient: extractedEmail,
+  sender: "Your connected Gmail",
+  subject: subject,
+  content: body
+});
     }
 
     // ========== DEFAULT CHAT FLOW ==========
