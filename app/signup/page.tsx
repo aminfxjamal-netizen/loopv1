@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from 'react';
-import { ArrowRight, Mail, Lock, User } from 'lucide-react';
+import { ArrowRight, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -19,17 +21,42 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      const userData = { 
-        name, 
-        email, 
-        password,
-        createdAt: new Date().toISOString() 
-      };
-      
-      // Store in localStorage for now (Supabase ready)
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        setError('An account with this email already exists.');
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert([{
+          name,
+          email,
+          password,
+          plan: 'trial',
+          trial_start: new Date().toISOString(),
+          trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        }])
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      const userData = { id: newUser.id, name, email };
       localStorage.setItem('loop_user_data', JSON.stringify(userData));
-      
-      // Redirect to pricing
+      localStorage.setItem('loop_user', JSON.stringify({
+        ...userData,
+        plan: 'trial',
+        trialStart: new Date().toISOString(),
+        trialEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      }));
+
       router.push('/pricing');
 
     } catch (err: any) {
@@ -101,14 +128,21 @@ export default function SignupPage() {
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Minimum 8 characters"
                   required
                   minLength={8}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors text-sm"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-14 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors text-sm"
                 />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
