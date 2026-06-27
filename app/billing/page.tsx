@@ -1,145 +1,167 @@
 "use client";
 
-import { useState } from 'react';
-import { ArrowRight, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Check, Shield, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-export default function SignupPage() {
+export default function BillingPage() {
   const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [planData, setPlanData] = useState<any>(null);
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
-
-    try {
-      const userData = { 
-        name, 
-        email, 
-        password,
-        createdAt: new Date().toISOString() 
-      };
-      
-      localStorage.setItem('loop_user_data', JSON.stringify(userData));
+  useEffect(() => {
+    const stored = localStorage.getItem('loop_selected_plan');
+    if (!stored) {
       router.push('/pricing');
-
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong. Try again.');
-    } finally {
-      setIsLoading(false);
+      return;
     }
+    setPlanData(JSON.parse(stored));
+  }, []);
+
+  const handlePayment = () => {
+    if (!planData) return;
+
+    const trialData = {
+      ...planData,
+      plan: planData.plan,
+      trialStart: new Date().toISOString(),
+      trialEnd: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+    };
+    localStorage.setItem('loop_user', JSON.stringify(trialData));
+    localStorage.removeItem('loop_selected_plan');
+    router.push('/workspace');
   };
 
+  if (!planData) return null;
+
+  const isPro = planData.plan === 'pro';
+  const price = isPro ? '$15' : '$30';
+  const planName = isPro ? 'Pro' : 'Business';
+  const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+
   return (
-    <div className="min-h-screen bg-[#080808] text-white font-sans flex flex-col">
-      <nav className="flex items-center justify-between px-4 md:px-6 py-5 max-w-7xl mx-auto w-full">
-        <Link href="/" className="text-2xl font-bold tracking-tight">Loop</Link>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">Already have an account?</span>
-          <Link href="/login" className="text-sm font-medium text-white hover:text-gray-300 transition-colors">Log in</Link>
-        </div>
+    <div className="min-h-screen bg-[#080808] text-white font-sans">
+      {/* NAVBAR */}
+      <nav className="flex items-center justify-between px-4 md:px-6 py-5 max-w-7xl mx-auto">
+        <Link href="/" className="flex items-center">
+          <img src="/logo.png" alt="Loop" className="h-7 w-auto" />
+        </Link>
+        <Link href="/pricing" className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors">
+          <ArrowLeft size={14} />
+          Back to plans
+        </Link>
       </nav>
 
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="h-14 w-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <User size={24} className="text-blue-400" />
+      <div className="max-w-2xl mx-auto px-4 py-16">
+        {/* HEADER */}
+        <div className="text-center mb-10">
+          <div className="h-14 w-14 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Shield size={24} className="text-blue-400" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Complete Your Order</h1>
+          <p className="text-gray-400">14-day free trial. Cancel anytime. No credit card required.</p>
+        </div>
+
+        {/* ORDER SUMMARY */}
+        <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-8 mb-6">
+          <h2 className="text-lg font-semibold mb-6">Order Summary</h2>
+          
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-300">{planName} Plan</span>
+              <span className="font-medium">{price}/mo</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">Create your account</h1>
-            <p className="text-gray-400">Start your 14-day free trial. No credit card required.</p>
+            
+            <div className="flex justify-between items-center py-3 border-b border-white/5">
+              <span className="text-gray-300">14-Day Free Trial</span>
+              <span className="text-green-400 font-medium">$0</span>
+            </div>
+
+            <div className="flex justify-between items-center py-3">
+              <span className="text-gray-300">Due Today</span>
+              <span className="text-2xl font-bold">$0</span>
+            </div>
           </div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 text-sm text-red-400 mb-4">
-              {error}
-            </div>
-          )}
+          <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-xl px-4 py-3">
+            <p className="text-xs text-blue-400">
+              You won't be charged until your trial ends on {trialEndDate}. Cancel anytime before then and you won't pay a thing.
+            </p>
+          </div>
+        </div>
 
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Full Name</label>
-              <div className="relative">
-                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors text-sm"
-                />
-              </div>
-            </div>
+        {/* WHAT'S INCLUDED */}
+        <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-8 mb-8">
+          <h3 className="font-semibold mb-4">What's included in {planName}:</h3>
+          <ul className="space-y-3">
+            {isPro ? (
+              <>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> 50 emails per day
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Priority AI responses
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Advanced follow-up rules
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Calendar integration
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Email drafting with AI
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Unlimited emails
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Everything in Pro
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Team workspace
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Drive integration
+                </li>
+                <li className="flex items-center gap-3 text-sm text-gray-300">
+                  <Check size={16} className="text-green-500 shrink-0" /> Admin dashboard
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Email Address</label>
-              <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 8 characters"
-                  required
-                  minLength={8}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-14 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 transition-colors text-sm"
-                />
-                <button 
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full bg-blue-500 text-white font-medium py-3 rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isLoading ? 'Creating account...' : 'Continue'}
-              <ArrowRight size={16} />
-            </button>
-          </form>
-
-          <p className="text-xs text-gray-500 text-center mt-4">
-            By continuing, you agree to Loop's <Link href="/terms" className="text-blue-400 hover:underline">Terms</Link> and <Link href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</Link>.
+        {/* BUTTONS */}
+        <div className="space-y-3">
+          <button 
+            onClick={handlePayment} 
+            className="w-full bg-blue-500 text-white font-medium py-4 rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-lg"
+          >
+            Start 14-Day Free Trial
+            <ArrowRight size={18} />
+          </button>
+          
+          <p className="text-xs text-gray-500 text-center">
+            You will not be charged today. Cancel anytime during your trial.
           </p>
         </div>
       </div>
 
-      <footer className="border-t border-white/5 py-6">
+      {/* FOOTER */}
+      <div className="border-t border-white/5 py-6">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-center gap-6 text-sm text-gray-500">
           <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
           <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
           <span>© 2026 Loop</span>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
