@@ -96,12 +96,37 @@ export default function Workspace() {
   useEffect(() => {
     const initUser = async () => {
       if (!userEmail) return;
-      const { data: existingUser } = await supabase
+      
+      let { data: existingUser } = await supabase
         .from('users')
         .select('id')
         .eq('email', userEmail)
         .single();
-      if (existingUser) {
+
+      if (!existingUser) {
+        const stored = localStorage.getItem('loop_user_data');
+        if (!stored) return;
+        const parsed = JSON.parse(stored);
+        
+        const { data: newUser } = await supabase
+          .from('users')
+          .insert([{
+            name: parsed.name || 'User',
+            email: userEmail,
+            password: parsed.password || '',
+            plan: 'trial',
+            trial_start: new Date().toISOString(),
+            trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          }])
+          .select('id')
+          .single();
+        
+        if (newUser) {
+          setUserId(newUser.id);
+          const convs = await getConversations(newUser.id);
+          setConversations(convs || []);
+        }
+      } else {
         setUserId(existingUser.id);
         const convs = await getConversations(existingUser.id);
         setConversations(convs || []);
@@ -326,9 +351,6 @@ export default function Workspace() {
                 <button onClick={() => setInputValue("Schedule a meeting")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Schedule a meeting</button>
                 <button onClick={() => setInputValue("Summarize my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Summarize my files</button>
               </div>
-              <div className="text-gray-600 text-xs mt-8 flex items-center gap-1.5">
-                <Lock size={12} /> Loop will always ask for your approval before taking any action.
-              </div>
             </div>
           ) : (
             <div className="max-w-[680px] mx-auto px-4 py-8 space-y-6">
@@ -372,7 +394,7 @@ export default function Workspace() {
             <div className="flex items-end gap-3 bg-[#0d0d0d] border border-white/10 rounded-2xl p-3 focus-within:border-blue-500/50 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all">
               <div className="relative" ref={plusMenuRef}>
                 <button type="button" onClick={() => setShowPlusMenu(!showPlusMenu)} className="text-gray-500 hover:text-gray-300 p-2 shrink-0 transition-colors">
-                  <Paperclip size={18} />
+                  <Plus size={20} />
                 </button>
                 {showPlusMenu && (
                   <div className="absolute bottom-full left-0 mb-2 w-60 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
@@ -402,7 +424,6 @@ export default function Workspace() {
                 <Send size={16} />
               </button>
             </div>
-            <p className="text-center text-xs text-gray-600 mt-3">Press Enter to send • Shift + Enter for new line</p>
           </form>
         </div>
 
