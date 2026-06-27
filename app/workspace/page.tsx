@@ -102,7 +102,8 @@ export default function Workspace() {
         setConversations(convs || []);
       }
 
-      await saveMessage(convId, 'user', userContent);
+    if (!convId) throw new Error("No conversation ID");
+await saveMessage(convId, 'user', userContent);
 
       const response = await fetch('/api/chat', {
         method: 'POST',
