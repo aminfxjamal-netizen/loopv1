@@ -70,7 +70,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-[#080808] text-white font-sans flex flex-col">
       <nav className="flex items-center justify-between px-4 md:px-6 py-5 max-w-7xl mx-auto w-full">
        <Link href="/" className="flex items-center">
-  <img src="/logo.png" alt="Loop" className="h-8 w-auto" />
+  <img src="/logo.png?v=1" alt="Loop" className="h-8 w-auto" />
 </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">Already have an account?</span>

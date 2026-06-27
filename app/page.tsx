@@ -36,7 +36,7 @@ export default function LandingPage() {
       <nav className="flex items-center justify-between px-4 md:px-6 py-4 max-w-7xl mx-auto">
         {/* LEFT — Logo */}
         <Link href="/" className="flex items-center gap-2 shrink-0">
-          <img src="/logo.png" alt="Loop" className="h-7 w-auto" />
+          <img src="/logo.png?v=1" alt="Loop" className="h-7 w-auto" />
           <span className="text-xl font-bold tracking-tight hidden sm:block">Loop</span>
         </Link>
 
