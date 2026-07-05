@@ -77,6 +77,51 @@ export default function Workspace() {
   }, []);
 
   useEffect(() => {
+    const initUser = async () => {
+      if (!userEmail) return;
+      try {
+        let { data: existingUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', userEmail)
+          .single();
+
+        if (!existingUser) {
+          const stored = localStorage.getItem('loop_user_data');
+          if (!stored) return;
+          const parsed = JSON.parse(stored);
+          
+          const { data: newUser } = await supabase
+            .from('users')
+            .insert([{
+              name: parsed.name || 'User',
+              email: userEmail,
+              password: parsed.password || '',
+              plan: 'trial',
+              trial_start: new Date().toISOString(),
+              trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+            }])
+            .select('id')
+            .single();
+          
+          if (newUser) {
+            setUserId(newUser.id);
+            const convs = await getConversations(newUser.id);
+            setConversations(convs || []);
+          }
+        } else {
+          setUserId(existingUser.id);
+          const convs = await getConversations(existingUser.id);
+          setConversations(convs || []);
+        }
+      } catch (err) {
+        console.warn('Supabase init error, continuing without persistence:', err);
+      }
+    };
+    initUser();
+  }, [userEmail]);
+
+  useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { setShowConnectedApps(false); setShowPlusMenu(false); }
     };
@@ -94,48 +139,6 @@ export default function Workspace() {
   }, []);
 
   useEffect(() => {
-    const initUser = async () => {
-      if (!userEmail) return;
-      
-      let { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', userEmail)
-        .single();
-
-      if (!existingUser) {
-        const stored = localStorage.getItem('loop_user_data');
-        if (!stored) return;
-        const parsed = JSON.parse(stored);
-        
-        const { data: newUser } = await supabase
-          .from('users')
-          .insert([{
-            name: parsed.name || 'User',
-            email: userEmail,
-            password: parsed.password || '',
-            plan: 'trial',
-            trial_start: new Date().toISOString(),
-            trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-          }])
-          .select('id')
-          .single();
-        
-        if (newUser) {
-          setUserId(newUser.id);
-          const convs = await getConversations(newUser.id);
-          setConversations(convs || []);
-        }
-      } else {
-        setUserId(existingUser.id);
-        const convs = await getConversations(existingUser.id);
-        setConversations(convs || []);
-      }
-    };
-    initUser();
-  }, [userEmail]);
-
-  useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
@@ -144,7 +147,7 @@ export default function Workspace() {
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputValue.trim() || isLoading || !userId) return;
+    if (!inputValue.trim() || isLoading) return;
 
     if (isOverLimit()) {
       setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'You have reached your 10 message limit for today. Your limit resets at midnight.' }]);
@@ -161,16 +164,19 @@ export default function Workspace() {
 
     try {
       let convId: string | null = activeConversationId;
-      if (!convId) {
-        const conv = await createConversation(userId, userContent.substring(0, 60));
-        convId = conv.id;
-        setActiveConversationId(convId);
-        const convs = await getConversations(userId);
-        setConversations(convs || []);
+      if (userId && !convId) {
+        try {
+          const conv = await createConversation(userId, userContent.substring(0, 60));
+          convId = conv.id;
+          setActiveConversationId(convId);
+          const convs = await getConversations(userId);
+          setConversations(convs || []);
+        } catch {}
       }
 
-      if (!convId) throw new Error("No conversation ID");
-      await saveMessage(convId, 'user', userContent);
+      if (convId && userId) {
+        try { await saveMessage(convId, 'user', userContent); } catch {}
+      }
 
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -203,8 +209,8 @@ export default function Workspace() {
         subject: subject
       };
 
-      if (convId) {
-        await saveMessage(convId, 'assistant', assistantMessage.content, assistantMessage.isDraft || false, assistantMessage.recipient || '', assistantMessage.subject || '');
+      if (convId && userId) {
+        try { await saveMessage(convId, 'assistant', assistantMessage.content, assistantMessage.isDraft || false, assistantMessage.recipient || '', assistantMessage.subject || ''); } catch {}
       }
 
       setMessages(prev => [...prev, assistantMessage]);
@@ -218,11 +224,13 @@ export default function Workspace() {
   const loadConversation = async (convId: string) => {
     setActiveConversationId(convId);
     setSidebarOpen(false);
-    const msgs = await getMessages(convId);
-    setMessages((msgs || []).map((m: any) => ({
-      id: m.id, role: m.role, content: m.content,
-      isDraft: m.is_draft, recipient: m.recipient || '', subject: m.subject || ''
-    })));
+    try {
+      const msgs = await getMessages(convId);
+      setMessages((msgs || []).map((m: any) => ({
+        id: m.id, role: m.role, content: m.content,
+        isDraft: m.is_draft, recipient: m.recipient || '', subject: m.subject || ''
+      })));
+    } catch {}
   };
 
   const handleApproveDraft = async (message: Message) => {
