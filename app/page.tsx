@@ -187,16 +187,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ROADMAP */}
-      <section id="roadmap" className="max-w-7xl mx-auto px-4 md:px-6 py-24 md:py-32 border-t border-white/5">
-        <div className="text-center mb-16"><p className="text-sm text-blue-400 font-medium mb-4 uppercase tracking-widest">Roadmap</p><h2 className="text-3xl md:text-4xl font-bold tracking-tight">Where we are headed.</h2></div>
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-6 flex items-start gap-4"><div className="h-10 w-10 bg-green-500/10 rounded-xl flex items-center justify-center shrink-0"><Check size={20} className="text-green-400" /></div><div><h3 className="font-semibold text-lg">V1 — Launch</h3><p className="text-sm text-green-400 mb-1">September 2026</p><p className="text-gray-400 text-sm">AI workspace with Gmail integration. Draft, send, and track emails with natural language. Follow-up tracking. 10 emails/day free.</p></div></div>
-          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-6 flex items-start gap-4 opacity-70"><div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0"><Calendar size={20} className="text-blue-400" /></div><div><h3 className="font-semibold text-lg">V1.1 — Calendar</h3><p className="text-sm text-blue-400 mb-1">November 2026</p><p className="text-gray-400 text-sm">Google Calendar integration. Schedule meetings, find open slots, and manage your calendar with natural language.</p></div></div>
-          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-6 flex items-start gap-4 opacity-50"><div className="h-10 w-10 bg-yellow-500/10 rounded-xl flex items-center justify-center shrink-0"><HardDrive size={20} className="text-yellow-400" /></div><div><h3 className="font-semibold text-lg">V1.2 — Drive</h3><p className="text-sm text-yellow-400 mb-1">January 2027</p><p className="text-gray-400 text-sm">Google Drive integration. Find, summarize, and reference files without opening a tab.</p></div></div>
-          <div className="bg-[#0d0d0d] border border-white/5 rounded-2xl p-6 flex items-start gap-4 opacity-30"><div className="h-10 w-10 bg-purple-500/10 rounded-xl flex items-center justify-center shrink-0"><Globe size={20} className="text-purple-400" /></div><div><h3 className="font-semibold text-lg">V2 — Flowrun Marketplace</h3><p className="text-sm text-purple-400 mb-1">2030</p><p className="text-gray-400 text-sm">Enterprise agent marketplace. Lease or buy specialized AI agents for your business. The OS for how work gets done.</p></div></div>
-        </div>
-      </section>
+      
 
       {/* CTA */}
       <section className="max-w-7xl mx-auto px-4 md:px-6 py-24 md:py-32 border-t border-white/5 text-center relative">
