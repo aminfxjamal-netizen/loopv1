@@ -7,6 +7,7 @@ import {
   FolderOpen, Upload, Menu, Paperclip
 } from 'lucide-react';
 import Link from 'next/link';
+import { addFollowUp, getDueFollowUps, getPendingCount, markFollowUpComplete, cancelFollowUp } from '@/lib/followup-service';
 import { useGmailCredentials } from '@/hooks/useGmailCredentials';
 import { getConversations, getMessages, createConversation, saveMessage } from '@/lib/chat-service';
 import { supabase } from '@/lib/supabase';
@@ -259,7 +260,7 @@ export default function Workspace() {
       setMessages(prev => [...prev, {
         id: Math.random().toString(36).substring(7), role: 'assistant',
         content: data.success
-          ? `Email sent to ${message.recipient}.`
+         ? `Email sent to ${message.recipient}. When should I follow up if there's no reply?`
           : `Failed to send: ${data.error || 'Unknown error'}`
       }]);
     } catch {
