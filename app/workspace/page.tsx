@@ -26,12 +26,45 @@ interface Message {
   followUpSubject?: string;
 }
 
-const DAILY_LIMIT = 10;
+function getUserPlan(): string {
+  const user = localStorage.getItem('loop_user');
+  if (user) { try { return JSON.parse(user).plan || 'trial'; } catch {} }
+  return 'trial';
+}
 
-function getTodayKey(): string { return new Date().toISOString().split('T')[0]; }
-function getMessageCount(): number { return parseInt(localStorage.getItem(`loop_msg_count_${getTodayKey()}`) || '0', 10); }
-function incrementMessageCount(): number { const key = `loop_msg_count_${getTodayKey()}`; const next = getMessageCount() + 1; localStorage.setItem(key, next.toString()); return next; }
-function isOverLimit(): boolean { return getMessageCount() >= DAILY_LIMIT; }
+function getLimitResetHours(): number {
+  const plan = getUserPlan();
+  if (plan === 'business') return 2;
+  if (plan === 'pro') return 3;
+  return 24;
+}
+
+function getHourKey(): string {
+  const now = new Date();
+  const hours = getLimitResetHours();
+  const block = Math.floor(now.getHours() / hours);
+  return `${now.toISOString().split('T')[0]}-block${block}`;
+}
+
+function getMessageCount(): number {
+  return parseInt(localStorage.getItem(`loop_msg_count_${getHourKey()}`) || '0', 10);
+}
+
+function incrementMessageCount(): number {
+  const key = `loop_msg_count_${getHourKey()}`;
+  const next = getMessageCount() + 1;
+  localStorage.setItem(key, next.toString());
+  return next;
+}
+
+function getMessageLimit(): number {
+  const plan = getUserPlan();
+  if (plan === 'business') return 70;
+  if (plan === 'pro') return 40;
+  return 25;
+}
+
+function isOverLimit(): boolean { return getMessageCount() >= getMessageLimit(); }
 
 export default function Workspace() {
   const [inputValue, setInputValue] = useState('');
@@ -58,9 +91,7 @@ export default function Workspace() {
 
   useEffect(() => {
     const stored = localStorage.getItem('loop_user_data');
-    if (stored) {
-      try { const parsed = JSON.parse(stored); if (parsed.name) setUserName(parsed.name); if (parsed.email) setUserEmail(parsed.email); } catch {}
-    }
+    if (stored) { try { const p = JSON.parse(stored); if (p.name) setUserName(p.name); if (p.email) setUserEmail(p.email); } catch {} }
   }, []);
 
   useEffect(() => {
@@ -82,50 +113,38 @@ export default function Workspace() {
   useEffect(() => {
     const dueFollowUps = getDueFollowUps();
     if (dueFollowUps.length > 0 && userId) {
-      const followUpMessages = dueFollowUps.map(f => ({
-        id: Math.random().toString(36).substring(7),
-        role: 'assistant' as const,
-        content: `${f.recipientEmail} has not replied to your email about "${f.subject}". Would you like me to send a follow-up?`,
-        isFollowUpPrompt: true,
-        followUpId: f.id,
-        followUpRecipient: f.recipientEmail,
-        followUpSubject: f.subject
-      }));
-      setMessages(prev => [...followUpMessages, ...prev]);
+      setMessages(prev => [...dueFollowUps.map(f => ({ id: Math.random().toString(36).substring(7), role: 'assistant' as const, content: `${f.recipientEmail} has not replied to your email about "${f.subject}". Would you like me to send a follow-up?`, isFollowUpPrompt: true, followUpId: f.id, followUpRecipient: f.recipientEmail, followUpSubject: f.subject })), ...prev]);
     }
   }, [userId]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setShowConnectedApps(false); setShowPlusMenu(false); } };
     const handleClickOutside = (e: MouseEvent) => { if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) setShowPlusMenu(false); };
-    window.addEventListener('keydown', handleEsc);
-    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleEsc); document.addEventListener('mousedown', handleClickOutside);
     return () => { window.removeEventListener('keydown', handleEsc); document.removeEventListener('mousedown', handleClickOutside); };
   }, []);
 
-  useEffect(() => {
-    if (textareaRef.current) { textareaRef.current.style.height = 'auto'; textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'; }
-  }, [inputValue]);
+  useEffect(() => { if (textareaRef.current) { textareaRef.current.style.height = 'auto'; textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'; } }, [inputValue]);
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
-    if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'You have reached your 10 message limit for today. Your limit resets at midnight.' }]); setInputValue(''); return; }
+    if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Limit reached. Resets in ${getLimitResetHours()} hours.` }]); setInputValue(''); return; }
     const userContent = inputValue.trim();
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'user', content: userContent }]);
     setInputValue(''); setIsLoading(true); incrementMessageCount();
     try {
       let convId = activeConversationId;
-      if (userId && !convId) { try { const conv = await createConversation(userId, userContent.substring(0, 60)); convId = conv.id; setActiveConversationId(convId); const convs = await getConversations(userId); setConversations(convs || []); } catch {} }
+      if (userId && !convId) { try { const conv = await createConversation(userId, userContent.substring(0, 60)); convId = conv.id; setActiveConversationId(convId); setConversations(await getConversations(userId) || []); } catch {} }
       if (convId && userId) { try { await saveMessage(convId, 'user', userContent); } catch {} }
       const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: userContent }] }) });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       let recipient = data.recipient || '', subject = data.subject || '', body = data.content || '';
-      if (data.isDraft && data.content) { const toMatch = data.content.match(/^To:\s*(.+)$/m), subjectMatch = data.content.match(/^Subject:\s*(.+)$/m); if (toMatch) recipient = toMatch[1].trim(); if (subjectMatch) subject = subjectMatch[1].trim(); body = data.content.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim(); }
-      const assistantMessage: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: data.isDraft || false, recipient, sender: credentials?.email || 'Not connected', subject };
-      if (convId && userId) { try { await saveMessage(convId, 'assistant', assistantMessage.content, assistantMessage.isDraft || false, assistantMessage.recipient || '', assistantMessage.subject || ''); } catch {} }
-      setMessages(prev => [...prev, assistantMessage]);
+      if (data.isDraft && data.content) { const tm = data.content.match(/^To:\s*(.+)$/m), sm = data.content.match(/^Subject:\s*(.+)$/m); if (tm) recipient = tm[1].trim(); if (sm) subject = sm[1].trim(); body = data.content.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim(); }
+      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: data.isDraft || false, recipient, sender: credentials?.email || 'Not connected', subject };
+      if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
+      setMessages(prev => [...prev, am]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Something went wrong. Please try again.' }]); }
     finally { setIsLoading(false); }
   };
@@ -134,26 +153,21 @@ export default function Workspace() {
 
   const handleApproveDraft = async (message: Message) => {
     if (!message.recipient || !message.subject) return;
-    if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Daily limit reached.' }]); return; }
+    if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Limit reached. Resets in ${getLimitResetHours()} hours.` }]); return; }
     setIsLoading(true); incrementMessageCount();
     try {
       const response = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, body: message.content, userId: userId || 'current-user', gmailUser: credentials?.email || '', gmailAppPassword: credentials?.appPassword || '' }) });
       const data = await response.json();
-      if (data.success) {
-        setPendingFollowUp({ recipient: message.recipient, subject: message.subject });
-        setShowFollowUpOptions(true);
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]);
-      } else {
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]);
-      }
+      if (data.success) { setPendingFollowUp({ recipient: message.recipient, subject: message.subject }); setShowFollowUpOptions(true); setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]); }
+      else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]); }
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to send email.' }]); }
     finally { setIsLoading(false); }
   };
 
   const scheduleFollowUp = (minutes: number) => {
     if (!pendingFollowUp || !userId) return;
-    const followUpDate = new Date(Date.now() + minutes * 60 * 1000);
-    addFollowUp({ userId, recipientEmail: pendingFollowUp.recipient, subject: pendingFollowUp.subject, sentDate: new Date().toISOString(), followUpDate: followUpDate.toISOString(), status: 'pending' });
+    const fud = new Date(Date.now() + minutes * 60 * 1000);
+    addFollowUp({ userId, recipientEmail: pendingFollowUp.recipient, subject: pendingFollowUp.subject, sentDate: new Date().toISOString(), followUpDate: fud.toISOString(), status: 'pending' });
     const label = minutes <= 30 ? `${minutes} minutes` : minutes < 1440 ? 'later today' : minutes < 2880 ? 'tomorrow' : 'in 3 days';
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Got it. I will follow up ${label} if there is no reply.` }]);
     setShowFollowUpOptions(false); setPendingFollowUp(null);
@@ -162,15 +176,13 @@ export default function Workspace() {
   const handleSendFollowUp = async (recipient: string, subject: string, followUpId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: `Draft a follow-up email to ${recipient} about "${subject}". The recipient has not replied to the original email. Keep it polite and brief.` }] }) });
+      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: `Draft a follow-up email to ${recipient} about "${subject}". No reply received. Keep it polite and brief.` }] }) });
       const data = await response.json();
       markFollowUpComplete(followUpId);
-      let body = data.content || '';
-      let draftSubject = `Re: ${subject}`;
-      const subjectMatch = body.match(/^Subject:\s*(.+)$/m);
-      if (subjectMatch) draftSubject = subjectMatch[1].trim();
+      let body = data.content || '', ds = `Re: ${subject}`;
+      const sm = body.match(/^Subject:\s*(.+)$/m); if (sm) ds = sm[1].trim();
       body = body.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim();
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: true, recipient, sender: credentials?.email || 'Not connected', subject: draftSubject }]);
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: true, recipient, sender: credentials?.email || 'Not connected', subject: ds }]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to draft follow-up.' }]); }
     finally { setIsLoading(false); }
   };
