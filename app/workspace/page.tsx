@@ -83,6 +83,8 @@ export default function Workspace() {
   const [userEmail, setUserEmail] = useState('');
   const [showFollowUpOptions, setShowFollowUpOptions] = useState(false);
   const [pendingFollowUp, setPendingFollowUp] = useState<{recipient: string; subject: string} | null>(null);
+  const [customDate, setCustomDate] = useState('');
+  const [showCustomDate, setShowCustomDate] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -156,21 +158,35 @@ export default function Workspace() {
     if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Limit reached. Resets in ${getLimitResetHours()} hours.` }]); return; }
     setIsLoading(true); incrementMessageCount();
     try {
-      const response = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, body: message.content, userId: userId || 'current-user', gmailUser: credentials?.email || '', gmailAppPassword: credentials?.appPassword || '' }) });
+      const response = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, body: message.content, userId: userId || 'test-user', gmailUser: credentials?.email || '', gmailAppPassword: credentials?.appPassword || '' }) });
       const data = await response.json();
-      if (data.success) { setPendingFollowUp({ recipient: message.recipient, subject: message.subject }); setShowFollowUpOptions(true); setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]); }
-      else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]); }
+      if (data.success) {
+        setPendingFollowUp({ recipient: message.recipient, subject: message.subject });
+        setShowFollowUpOptions(true);
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]);
+      } else {
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]);
+      }
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to send email.' }]); }
     finally { setIsLoading(false); }
   };
 
   const scheduleFollowUp = (minutes: number) => {
-    if (!pendingFollowUp || !userId) return;
+    if (!pendingFollowUp) return;
+    const uid = userId || 'local-user';
     const fud = new Date(Date.now() + minutes * 60 * 1000);
-    addFollowUp({ userId, recipientEmail: pendingFollowUp.recipient, subject: pendingFollowUp.subject, sentDate: new Date().toISOString(), followUpDate: fud.toISOString(), status: 'pending' });
-    const label = minutes <= 30 ? `${minutes} minutes` : minutes < 1440 ? 'later today' : minutes < 2880 ? 'tomorrow' : 'in 3 days';
+    addFollowUp({ userId: uid, recipientEmail: pendingFollowUp.recipient, subject: pendingFollowUp.subject, sentDate: new Date().toISOString(), followUpDate: fud.toISOString(), status: 'pending' });
+    const label = minutes <= 30 ? `${minutes} minutes` : minutes < 1440 ? 'later today' : minutes < 2880 ? 'tomorrow' : `in ${Math.round(minutes/1440)} days`;
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Got it. I will follow up ${label} if there is no reply.` }]);
-    setShowFollowUpOptions(false); setPendingFollowUp(null);
+    setShowFollowUpOptions(false); setPendingFollowUp(null); setShowCustomDate(false);
+  };
+
+  const scheduleCustomFollowUp = () => {
+    if (!pendingFollowUp || !customDate) return;
+    const fud = new Date(customDate);
+    const minutes = Math.round((fud.getTime() - Date.now()) / (60 * 1000));
+    if (minutes <= 0) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Please select a future date and time.' }]); return; }
+    scheduleFollowUp(minutes);
   };
 
   const handleSendFollowUp = async (recipient: string, subject: string, followUpId: string) => {
@@ -249,12 +265,19 @@ export default function Workspace() {
                 <div className="flex w-full justify-start">
                   <div className="bg-[#0d0d0d] border border-white/10 rounded-2xl p-4 max-w-[85%]">
                     <p className="text-sm text-gray-300 mb-3">When should I follow up?</p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mb-3">
                       <button onClick={() => scheduleFollowUp(20)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">In 20 mins</button>
                       <button onClick={() => scheduleFollowUp(120)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Later today</button>
                       <button onClick={() => scheduleFollowUp(1440)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Tomorrow</button>
                       <button onClick={() => scheduleFollowUp(4320)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">In 3 days</button>
+                      <button onClick={() => setShowCustomDate(!showCustomDate)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition"><Calendar size={14} className="inline mr-1" />Custom</button>
                     </div>
+                    {showCustomDate && (
+                      <div className="flex gap-2">
+                        <input type="datetime-local" value={customDate} onChange={(e) => setCustomDate(e.target.value)} className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                        <button onClick={scheduleCustomFollowUp} disabled={!customDate} className="bg-blue-500 text-white text-xs px-3 py-2 rounded-lg hover:bg-blue-600 transition disabled:opacity-50">Set</button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
