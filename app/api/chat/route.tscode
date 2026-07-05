@@ -9,7 +9,7 @@ function extractEmail(text: string): string | null {
 
 function isEmailDraftIntent(text: string): boolean {
   const lowerText = text.toLowerCase();
-  const draftKeywords = ['draft', 'email', 'send', 'compose', 'write to', 'message to', 'mail'];
+  const draftKeywords = ['draft an email', 'draft email', 'email to', 'send an email', 'compose an email', 'write an email', 'mail to'];
   return draftKeywords.some(keyword => lowerText.includes(keyword));
 }
 
@@ -45,42 +45,22 @@ export async function POST(req: Request) {
       if (!extractedEmail) {
         return Response.json({
           role: "assistant",
-          content: "I'd be happy to draft that email. What email address should I send it to?"
+          content: "I would be happy to draft that email. What email address should I send it to?"
         });
       }
 
-      const systemPrompt = `You are Loop, an elite executive assistant. Your writing style is your identity.
+      const systemPrompt = `Write a professional email in clean plain text. Use this exact format with no extra characters:
 
-FORMATTING RULES:
-- Write emails in clean human format only.
-- Use this exact structure for every email draft:
+To: [email]
+Subject: [subject]
 
-To: [email address]
-Subject: [subject line]
+[Your email body here with proper spacing]
 
-[Body text with proper spacing between paragraphs]
-
-- Each part on its own line with a blank line between sections.
-- No curly braces { }. No quotation marks around fields. No JSON.
-- Just clean, professional, human-written text.
-
-TONE:
-- Confident, direct, warm but professional.
-- Never robotic. Never use "I hope this email finds you well" or "I am writing to inform you".
-- Write like a skilled human assistant who respects the recipient's time.
-
-STRUCTURE:
-- Subject line: Clear, specific, 3-7 words.
-- Body: Greeting, purpose, details with proper spacing, next step or closing.
-
-WHEN USER PROVIDES THE BODY:
-- Use their exact body text. Do not rewrite or add to it.
-
-OUTPUT: Clean text in the format above. No JSON. No code blocks. No extra commentary.`;
+IMPORTANT: Do not use JSON. Do not use curly braces. Do not use quotation marks around fields. Output only the email text. Nothing else.`;
 
       const responseText = await callGroq([
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Draft an email based on this request: "${cleanInput}". The recipient email is ${extractedEmail}.` }
+        { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient email: ${extractedEmail}.` }
       ]);
 
       let recipient = extractedEmail;
@@ -111,7 +91,7 @@ OUTPUT: Clean text in the format above. No JSON. No code blocks. No extra commen
     const chatText = await callGroq([
       { 
         role: "system", 
-        content: "You are Loop, a professional AI assistant. You help users manage emails, schedule meetings, and get work done. Keep responses concise, clear, and directly helpful. No JSON. No code blocks. Just natural human conversation." 
+        content: "You are Loop, a helpful AI assistant. Keep responses natural, concise, and human. No JSON. No code blocks. No special formatting." 
       },
       { role: "user", content: cleanInput }
     ]);
@@ -121,7 +101,7 @@ OUTPUT: Clean text in the format above. No JSON. No code blocks. No extra commen
   } catch (error: any) {
     console.error("Pipeline error:", error);
     return Response.json(
-      { role: "assistant", content: `Something went wrong. Please try again.` },
+      { role: "assistant", content: "Something went wrong. Please try again." },
       { status: 500 }
     );
   }
