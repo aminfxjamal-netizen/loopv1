@@ -60,9 +60,45 @@ export async function POST(req: Request) {
 
     // ========== CALENDAR INTENT ==========
     if (isCalendarIntent(cleanInput)) {
+      const extractedEmail = extractEmail(cleanInput);
+      
+      const today = new Date();
+      let meetingDate = today.toISOString().split('T')[0];
+      if (cleanInput.includes('tomorrow')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        meetingDate = tomorrow.toISOString().split('T')[0];
+      }
+
+      const timeMatch = cleanInput.match(/(\d{1,2})\s*(AM|PM|am|pm)/i);
+      let meetingTime = '10:00';
+      if (timeMatch) {
+        let hour = parseInt(timeMatch[1]);
+        const ampm = timeMatch[2].toUpperCase();
+        if (ampm === 'PM' && hour < 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        meetingTime = `${hour.toString().padStart(2, '0')}:00`;
+      }
+
+      let meetingSubject = 'Meeting';
+      const aboutMatch = cleanInput.match(/about\s+(.+)/i);
+      if (aboutMatch) meetingSubject = aboutMatch[1].trim().substring(0, 50);
+
+      if (!extractedEmail) {
+        return Response.json({
+          role: "assistant",
+          content: "I can schedule that meeting. What email address should I send the invite to?"
+        });
+      }
+
       return Response.json({
         role: "assistant",
-        content: "I can schedule that meeting for you. Please provide these details:\n\n• Date and time\n• Email of the person you're meeting\n• Subject of the meeting\n\nFor example: 'Schedule a meeting with john@gmail.com tomorrow at 2 PM about the contract.'"
+        isCalendar: true,
+        recipient: extractedEmail,
+        subject: meetingSubject,
+        date: meetingDate,
+        time: meetingTime,
+        content: `Meeting: ${meetingSubject}\nWith: ${extractedEmail}\nDate: ${meetingDate}\nTime: ${meetingTime}\n\nWould you like me to schedule this and send a calendar invite?`
       });
     }
 
