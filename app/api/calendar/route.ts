@@ -42,6 +42,7 @@ export async function POST(req: Request) {
       auth: { user: email, pass: appPassword }
     });
 
+    // Send to recipient
     await transporter.sendMail({
       from: email,
       to: to,
@@ -54,9 +55,22 @@ export async function POST(req: Request) {
       }]
     });
 
+    // Send to yourself so it adds to your calendar
+    await transporter.sendMail({
+      from: email,
+      to: email,
+      subject: `[Your Calendar] ${subject}`,
+      text: `Meeting added to your calendar: ${subject} with ${to} on ${date} at ${time}.\n\nOpen the attachment to add it to your calendar.`,
+      attachments: [{
+        filename: 'invite.ics',
+        content: icsContent,
+        contentType: 'text/calendar; charset=UTF-8'
+      }]
+    });
+
     return Response.json({
       success: true,
-      message: `Meeting scheduled: ${subject} with ${to} on ${date} at ${time}.`
+      message: `Meeting scheduled: ${subject} with ${to} on ${date} at ${time}. Check your email to add it to your calendar.`
     });
 
   } catch (error: any) {
