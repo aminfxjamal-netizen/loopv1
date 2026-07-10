@@ -13,6 +13,12 @@ function isEmailDraftIntent(text: string): boolean {
   return draftKeywords.some(keyword => lowerText.includes(keyword));
 }
 
+function isCalendarIntent(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  const calendarKeywords = ['schedule', 'meeting', 'appointment', 'calendar', 'book a meeting', 'set up a call', 'set up a meeting'];
+  return calendarKeywords.some(keyword => lowerText.includes(keyword));
+}
+
 async function callGroq(messages: any[], maxTokens = 1024) {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -52,6 +58,15 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim();
 
+    // ========== CALENDAR INTENT ==========
+    if (isCalendarIntent(cleanInput)) {
+      return Response.json({
+        role: "assistant",
+        content: "I can schedule that meeting for you. Please provide these details:\n\n• Date and time\n• Email of the person you're meeting\n• Subject of the meeting\n\nFor example: 'Schedule a meeting with john@gmail.com tomorrow at 2 PM about the contract.'"
+      });
+    }
+
+    // ========== EMAIL DRAFT FLOW ==========
     if (isEmailDraftIntent(cleanInput)) {
       const extractedEmail = extractEmail(cleanInput);
 
@@ -103,6 +118,7 @@ IMPORTANT: Do not use JSON. Do not use curly braces. Do not use quotation marks 
       });
     }
 
+    // ========== DEFAULT CHAT FLOW ==========
     const chatText = await callGroq([
       { 
         role: "system", 
