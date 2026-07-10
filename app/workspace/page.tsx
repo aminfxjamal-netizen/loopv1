@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGmailCredentials } from '@/hooks/useGmailCredentials';
+import { useCalendarCredentials } from '@/hooks/useCalendarCredentials';
 import { getConversations, getMessages, createConversation, saveMessage } from '@/lib/chat-service';
 import { supabase } from '@/lib/supabase';
 import { addFollowUp, getDueFollowUps, markFollowUpComplete } from '@/lib/followup-service';
@@ -20,6 +21,9 @@ interface Message {
   recipient?: string;
   sender?: string;
   subject?: string;
+  isCalendar?: boolean;
+  date?: string;
+  time?: string;
   isFollowUpPrompt?: boolean;
   followUpId?: string;
   followUpRecipient?: string;
@@ -75,6 +79,9 @@ export default function Workspace() {
   const [showGmailForm, setShowGmailForm] = useState(false);
   const [gmailEmail, setGmailEmail] = useState('');
   const [gmailPassword, setGmailPassword] = useState('');
+  const [showCalendarForm, setShowCalendarForm] = useState(false);
+  const [calEmail, setCalEmail] = useState('');
+  const [calPassword, setCalPassword] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -90,6 +97,7 @@ export default function Workspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { credentials, isConfigured, saveCredentials, removeCredentials } = useGmailCredentials();
+  const { credentials: calCredentials, isConfigured: calIsConfigured, saveCredentials: saveCalCredentials, removeCredentials: removeCalCredentials } = useCalendarCredentials();
 
   useEffect(() => {
     const stored = localStorage.getItem('loop_user_data');
@@ -143,15 +151,15 @@ export default function Workspace() {
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       let recipient = data.recipient || '', subject = data.subject || '', body = data.content || '';
-      if (data.isDraft && data.content) { const tm = data.content.match(/^To:\s*(.+)$/m), sm = data.content.match(/^Subject:\s*(.+)$/m); if (tm) recipient = tm[1].trim(); if (sm) subject = sm[1].trim(); body = data.content.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim(); }
-      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: data.isDraft || false, recipient, sender: credentials?.email || 'Not connected', subject };
+      if ((data.isDraft || data.isCalendar) && data.content) { const tm = data.content.match(/^To:\s*(.+)$/m), sm = data.content.match(/^Subject:\s*(.+)$/m); if (tm) recipient = tm[1].trim(); if (sm) subject = sm[1].trim(); body = data.content.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim(); }
+      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: data.isDraft || false, isCalendar: data.isCalendar || false, recipient, sender: credentials?.email || 'Not connected', subject, date: data.date || '', time: data.time || '' };
       if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
       setMessages(prev => [...prev, am]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Something went wrong. Please try again.' }]); }
     finally { setIsLoading(false); }
   };
 
-  const loadConversation = async (convId: string) => { setActiveConversationId(convId); setSidebarOpen(false); try { const msgs = await getMessages(convId); setMessages((msgs || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, isDraft: m.is_draft, recipient: m.recipient || '', subject: m.subject || '' }))); } catch {} };
+  const loadConversation = async (convId: string) => { setActiveConversationId(convId); setSidebarOpen(false); try { const msgs = await getMessages(convId); setMessages((msgs || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, isDraft: m.is_draft, isCalendar: m.is_calendar, recipient: m.recipient || '', subject: m.subject || '', date: m.date || '', time: m.time || '' }))); } catch {} };
 
   const handleApproveDraft = async (message: Message) => {
     if (!message.recipient || !message.subject) return;
@@ -160,14 +168,20 @@ export default function Workspace() {
     try {
       const response = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, body: message.content, userId: userId || 'test-user', gmailUser: credentials?.email || '', gmailAppPassword: credentials?.appPassword || '' }) });
       const data = await response.json();
-      if (data.success) {
-        setPendingFollowUp({ recipient: message.recipient, subject: message.subject });
-        setShowFollowUpOptions(true);
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]);
-      } else {
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]);
-      }
+      if (data.success) { setPendingFollowUp({ recipient: message.recipient, subject: message.subject }); setShowFollowUpOptions(true); setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]); }
+      else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]); }
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to send email.' }]); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleApproveCalendar = async (message: Message) => {
+    if (!message.recipient || !message.date || !message.time) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, date: message.date, time: message.time, duration: '60', email: calCredentials?.email || credentials?.email || '', appPassword: calCredentials?.appPassword || credentials?.appPassword || '' }) });
+      const data = await response.json();
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.success ? `Calendar invite sent to ${message.recipient} for ${message.date} at ${message.time}.` : `Failed: ${data.error}` }]);
+    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to schedule meeting.' }]); }
     finally { setIsLoading(false); }
   };
 
@@ -205,13 +219,14 @@ export default function Workspace() {
 
   const skipFollowUp = (followUpId: string) => { markFollowUpComplete(followUpId); setMessages(prev => prev.filter(m => m.followUpId !== followUpId)); };
   const handleConnectGmail = () => { if (gmailEmail && gmailPassword) { saveCredentials(gmailEmail, gmailPassword); setGmailEmail(''); setGmailPassword(''); setShowGmailForm(false); } };
+  const handleConnectCalendar = () => { if (calEmail && calPassword) { saveCalCredentials(calEmail, calPassword); setCalEmail(''); setCalPassword(''); setShowCalendarForm(false); } };
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   return (
     <div className="flex h-screen w-full bg-[#080808] text-white font-sans">
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed md:relative z-50 w-[240px] bg-[#0d0d0d] border-r border-white/5 flex flex-col h-full p-4 shrink-0 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <Link href="/" className="flex items-center gap-2 mb-6"><img src="/logo.png?v=1" alt="Loop" className="h-7 w-auto" /></Link>
+        <Link href="/" className="flex items-center gap-2 mb-6"><img src="/logo.png?v=3" alt="Loop" className="h-7 w-auto" /></Link>
         <button onClick={() => { setMessages([]); setActiveConversationId(null); setSidebarOpen(false); }} className="flex items-center justify-center gap-2 border border-white/10 text-gray-300 bg-transparent rounded-xl py-2.5 px-4 text-sm font-medium hover:bg-white/5 transition-colors w-full"><Plus size={16} /> New Chat</button>
         <div className="text-gray-500 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">Recent</div>
         <div className="flex-1 overflow-y-auto space-y-1">
@@ -244,6 +259,18 @@ export default function Workspace() {
                       <div className="flex gap-2 mt-5">
                         <button onClick={() => handleApproveDraft(msg)} disabled={isLoading} className="bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-600 transition disabled:opacity-50">Approve & Send</button>
                         <button className="bg-white/5 text-gray-300 text-sm px-4 py-2.5 rounded-xl hover:bg-white/10 transition">Edit</button>
+                        <button className="text-gray-500 text-sm px-4 py-2.5 hover:text-gray-300 transition ml-auto">Cancel</button>
+                      </div>
+                    </div>
+                  ) : msg.isCalendar ? (
+                    <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
+                      <div className="flex items-center gap-2 mb-3"><Calendar size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Calendar Invite</span></div>
+                      <div className="text-xs text-gray-500 mb-1">To: {msg.recipient}</div>
+                      <div className="text-sm font-semibold text-white mb-1">{msg.subject}</div>
+                      <div className="text-sm text-gray-300 mb-1">Date: {msg.date}</div>
+                      <div className="text-sm text-gray-300 mb-3">Time: {msg.time}</div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleApproveCalendar(msg)} disabled={isLoading} className="bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-600 transition disabled:opacity-50">Schedule & Send Invite</button>
                         <button className="text-gray-500 text-sm px-4 py-2.5 hover:text-gray-300 transition ml-auto">Cancel</button>
                       </div>
                     </div>
@@ -307,8 +334,11 @@ export default function Workspace() {
         <div className={`fixed right-0 top-0 h-full w-[320px] bg-[#0d0d0d] border-l border-white/5 z-50 p-6 overflow-y-auto transform transition-transform duration-300 ease-in-out ${showConnectedApps ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex items-center justify-between mb-1"><h2 className="text-lg font-semibold text-white">Connected Apps</h2><button onClick={() => setShowConnectedApps(false)} className="text-gray-500 hover:text-white"><X size={20} /></button></div>
           <p className="text-sm text-gray-500 mb-6">Manage your integrations</p>
+          {/* Gmail Card */}
           <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><Mail size={18} className="text-red-400" /><span className="text-white font-medium text-sm">Gmail</span><span className={`h-2 w-2 rounded-full ml-auto ${isConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{isConfigured ? `Connected as ${credentials?.email}` : 'Send emails and track follow-ups.'}</p>{isConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeCredentials} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showGmailForm && (<div className="mt-3 space-y-2"><input type="email" value={gmailEmail} onChange={(e) => setGmailEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={gmailPassword} onChange={(e) => setGmailPassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectGmail} disabled={!gmailEmail || !gmailPassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4 opacity-50"><div className="flex items-center gap-2"><Calendar size={18} className="text-blue-400" /><span className="text-gray-500 font-medium text-sm">Calendar</span><span className="bg-white/5 text-gray-600 text-[10px] px-2 py-0.5 rounded-full ml-auto">Soon</span></div><p className="text-xs text-gray-600 mt-2">Schedule meetings and manage your calendar.</p></div>
+          {/* Calendar Card */}
+          <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><Calendar size={18} className="text-blue-400" /><span className="text-white font-medium text-sm">Calendar</span><span className={`h-2 w-2 rounded-full ml-auto ${calIsConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{calIsConfigured ? `Connected as ${calCredentials?.email}` : 'Schedule meetings and send calendar invites.'}</p>{calIsConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowCalendarForm(!showCalendarForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeCalCredentials} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowCalendarForm(!showCalendarForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showCalendarForm && (<div className="mt-3 space-y-2"><input type="email" value={calEmail} onChange={(e) => setCalEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={calPassword} onChange={(e) => setCalPassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectCalendar} disabled={!calEmail || !calPassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
+          {/* Drive Card */}
           <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4 opacity-50"><div className="flex items-center gap-2"><HardDrive size={18} className="text-yellow-400" /><span className="text-gray-500 font-medium text-sm">Drive</span><span className="bg-white/5 text-gray-600 text-[10px] px-2 py-0.5 rounded-full ml-auto">Soon</span></div><p className="text-xs text-gray-600 mt-2">Access and summarize your files.</p></div>
         </div>
       </main>
