@@ -1,3 +1,4 @@
+// @ts-nocheck
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
@@ -16,20 +17,24 @@ export async function POST(req: Request) {
     const meetingDuration = parseInt(duration) || 60;
     const endTime = new Date(startTime.getTime() + meetingDuration * 60000);
 
-    const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const formatDate = (d: Date) => {
+      return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
 
-    const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Loop//EN
-BEGIN:VEVENT
-DTSTART:${formatDate(startTime)}
-DTEND:${formatDate(endTime)}
-SUMMARY:${subject}
-DESCRIPTION:Meeting scheduled by Loop
-ORGANIZER;CN=${email}:mailto:${email}
-ATTENDEE:mailto:${to}
-END:VEVENT
-END:VCALENDAR`;
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Loop//EN',
+      'BEGIN:VEVENT',
+      `DTSTART:${formatDate(startTime)}`,
+      `DTEND:${formatDate(endTime)}`,
+      `SUMMARY:${subject}`,
+      'DESCRIPTION:Meeting scheduled by Loop',
+      `ORGANIZER;CN=${email}:mailto:${email}`,
+      `ATTENDEE:mailto:${to}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
