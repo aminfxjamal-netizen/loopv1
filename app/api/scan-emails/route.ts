@@ -1,30 +1,30 @@
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
+  const { email, appPassword, months } = await req.json();
+
+  if (!email || !appPassword) {
+    return Response.json({ success: false, error: "Email not connected." }, { status: 400 });
+  }
+
+  const Imap = require('imap');
+  const { simpleParser } = require('mailparser');
+
+  const imap = new Imap({
+    user: email,
+    password: appPassword,
+    host: 'imap.gmail.com',
+    port: 993,
+    tls: true
+  });
+
+  const results: any[] = [];
+  const billingKeywords = ['invoice', 'receipt', 'subscription', 'billing', 'payment', 'renewal', 'trial ending', 'your monthly', 'paid', 'charged'];
+
+  const searchSince = new Date();
+  searchSince.setMonth(searchSince.getMonth() - (parseInt(months) || 3));
+
   try {
-    const { email, appPassword, months } = await req.json();
-
-    if (!email || !appPassword) {
-      return new Response(JSON.stringify({ success: false, error: "Email not connected." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    }
-
-    const Imap = require('imap');
-    const { simpleParser } = require('mailparser');
-
-    const imap = new Imap({
-      user: email,
-      password: appPassword,
-      host: 'imap.gmail.com',
-      port: 993,
-      tls: true
-    });
-
-    const results: any[] = [];
-    const billingKeywords = ['invoice', 'receipt', 'subscription', 'billing', 'payment', 'renewal', 'trial ending', 'your monthly', 'paid', 'charged'];
-
-    const searchSince = new Date();
-    searchSince.setMonth(searchSince.getMonth() - (parseInt(months) || 3));
-
     const scanResult = await new Promise<any>((resolve, reject) => {
       imap.once('ready', () => {
         imap.openBox('INBOX', false, () => {
@@ -68,16 +68,12 @@ export async function POST(req: Request) {
         });
       });
 
-      imap.once('error', (err: any) => {
-        reject(err);
-      });
-
+      imap.once('error', (err: any) => reject(err));
       imap.connect();
     });
 
-    return new Response(JSON.stringify(scanResult), { status: 200, headers: { 'Content-Type': 'application/json' } });
-
+    return Response.json(scanResult);
   } catch (error: any) {
-    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 }
