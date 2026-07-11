@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, Settings, Plus,
   X, Mail, HardDrive, Layers,
-  FolderOpen, Upload, Menu, Clock
+  FolderOpen, Upload, Menu, Clock, FileText
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGmailCredentials } from '@/hooks/useGmailCredentials';
@@ -22,6 +22,8 @@ interface Message {
   subject?: string;
   isExpenseScan?: boolean;
   months?: string;
+  isFileSummary?: boolean;
+  fileName?: string;
   isFollowUpPrompt?: boolean;
   followUpId?: string;
   followUpRecipient?: string;
@@ -87,6 +89,7 @@ export default function Workspace() {
   const [pendingFollowUp, setPendingFollowUp] = useState<{recipient: string; subject: string} | null>(null);
   const [customDate, setCustomDate] = useState('');
   const [showCustomDate, setShowCustomDate] = useState(false);
+  const [lastUploadedFile, setLastUploadedFile] = useState<{name: string, content: string} | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +133,33 @@ export default function Workspace() {
 
   useEffect(() => { if (textareaRef.current) { textareaRef.current.style.height = 'auto'; textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px'; } }, [inputValue]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setShowPlusMenu(false);
+    setIsLoading(true);
+    setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'user', content: `Uploaded: ${file.name}` }]);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/summarize', { method: 'POST', body: formData });
+      const data = await response.json();
+
+      if (data.success) {
+        setLastUploadedFile({ name: file.name, content: data.summary });
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.summary, isFileSummary: true, fileName: file.name }]);
+      } else {
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Could not summarize the file: ${data.error}` }]);
+      }
+    } catch {
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to process the file.' }]);
+    } finally {
+      setIsLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
@@ -137,6 +167,30 @@ export default function Workspace() {
     const userContent = inputValue.trim();
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'user', content: userContent }]);
     setInputValue(''); setIsLoading(true); incrementMessageCount();
+
+    // If user is asking about the last uploaded file
+    if (lastUploadedFile && (userContent.toLowerCase().includes('file') || userContent.toLowerCase().includes('document') || userContent.toLowerCase().includes('summary'))) {
+      try {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: "You are Loop. Answer questions about the uploaded file based on its content. Be concise and helpful. No markdown." },
+              { role: "user", content: `File name: ${lastUploadedFile.name}\nFile content: ${lastUploadedFile.content}\n\nUser question: ${userContent}` }
+            ],
+            temperature: 0.7, max_tokens: 1024
+          })
+        });
+        const data = await groqResponse.json();
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.choices[0].message.content }]);
+      } catch {
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Could not answer that question.' }]);
+      } finally { setIsLoading(false); }
+      return;
+    }
+
     try {
       let convId = activeConversationId;
       if (userId && !convId) { try { const conv = await createConversation(userId, userContent.substring(0, 60)); convId = conv.id; setActiveConversationId(convId); setConversations(await getConversations(userId) || []); } catch {} }
@@ -207,7 +261,7 @@ export default function Workspace() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
       <aside className={`fixed md:relative z-50 w-[240px] bg-[#0d0d0d] border-r border-white/5 flex flex-col h-full p-4 shrink-0 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <Link href="/" className="flex items-center gap-2 mb-6"><img src="/logo.png?v=3" alt="Loop" className="h-7 w-auto" /></Link>
-        <button onClick={() => { setMessages([]); setActiveConversationId(null); setSidebarOpen(false); }} className="flex items-center justify-center gap-2 border border-white/10 text-gray-300 bg-transparent rounded-xl py-2.5 px-4 text-sm font-medium hover:bg-white/5 transition-colors w-full"><Plus size={16} /> New Chat</button>
+        <button onClick={() => { setMessages([]); setActiveConversationId(null); setLastUploadedFile(null); setSidebarOpen(false); }} className="flex items-center justify-center gap-2 border border-white/10 text-gray-300 bg-transparent rounded-xl py-2.5 px-4 text-sm font-medium hover:bg-white/5 transition-colors w-full"><Plus size={16} /> New Chat</button>
         <div className="text-gray-500 uppercase text-xs tracking-wide font-semibold mt-6 mb-2">Recent</div>
         <div className="flex-1 overflow-y-auto space-y-1">
           {conversations.length === 0 ? <div className="text-gray-600 text-sm italic px-3 py-1">No conversations yet</div> : conversations.map((conv: any) => (
@@ -224,7 +278,7 @@ export default function Workspace() {
         <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0"><div className="flex items-center gap-3"><button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button><h1 className="text-sm font-medium text-gray-300 truncate">{activeConversation ? activeConversation.title : 'New Conversation'}</h1></div></header>
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Scan my subscriptions")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Scan my subscriptions</button><button onClick={() => setInputValue("Find my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Find my files</button></div></div>
+            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Scan my subscriptions")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Scan my subscriptions</button><button onClick={() => setInputValue("Summarize my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Summarize my files</button></div></div>
           ) : (
             <div className="max-w-[680px] mx-auto px-4 py-8 space-y-6">
               {messages.map((msg) => (
@@ -241,6 +295,12 @@ export default function Workspace() {
                         <button className="bg-white/5 text-gray-300 text-sm px-4 py-2.5 rounded-xl hover:bg-white/10 transition">Edit</button>
                         <button className="text-gray-500 text-sm px-4 py-2.5 hover:text-gray-300 transition ml-auto">Cancel</button>
                       </div>
+                    </div>
+                  ) : msg.isFileSummary ? (
+                    <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
+                      <div className="flex items-center gap-2 mb-3"><FileText size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">File Summary: {msg.fileName}</span></div>
+                      <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                      <p className="text-xs text-gray-500 mt-3">You can ask me questions about this file.</p>
                     </div>
                   ) : msg.isExpenseScan ? (
                     <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
@@ -292,12 +352,12 @@ export default function Workspace() {
                 <button type="button" onClick={() => setShowPlusMenu(!showPlusMenu)} className="text-gray-500 hover:text-gray-300 p-2 shrink-0 transition-colors"><Plus size={20} /></button>
                 {showPlusMenu && (
                   <div className="absolute bottom-full left-0 mb-2 w-60 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
-                    <button onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click(); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"><Upload size={16} className="text-blue-400" /><div><div className="font-medium">Upload File</div><div className="text-xs text-gray-500">Attach a file from your device</div></div></button>
-                    <button onClick={() => setShowPlusMenu(false)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left border-t border-white/5"><FolderOpen size={16} className="text-blue-400" /><div><div className="font-medium">Access Files</div><div className="text-xs text-gray-500">Give Loop access to your files</div></div></button>
+                    <button onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click(); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"><Upload size={16} className="text-blue-400" /><div><div className="font-medium">Upload File</div><div className="text-xs text-gray-500">Upload and summarize any document</div></div></button>
+                    <button onClick={() => setShowPlusMenu(false)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left border-t border-white/5"><FolderOpen size={16} className="text-blue-400" /><div><div className="font-medium">Access Files</div><div className="text-xs text-gray-500">Give Loop access to your Drive</div></div></button>
                   </div>
                 )}
               </div>
-              <input type="file" ref={fileInputRef} className="hidden" onChange={() => setShowPlusMenu(false)} />
+              <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
               <textarea ref={textareaRef} value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} placeholder="Tell Loop what you need..." disabled={isLoading} rows={1} className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm resize-none disabled:opacity-50 py-2" />
               <button type="submit" disabled={!inputValue.trim() || isLoading} className="bg-white text-black p-2.5 rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-30 shrink-0"><Send size={16} /></button>
             </div>
