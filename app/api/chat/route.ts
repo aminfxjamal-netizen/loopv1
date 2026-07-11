@@ -58,141 +58,82 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim();
 
-    // ========== EXPENSE & SAAS TRACKER ==========
+    // ========== EXPENSE SCAN ==========
     if (isExpenseScanIntent(cleanInput)) {
       const monthsMatch = cleanInput.match(/(\d+)\s*months?/i);
       const months = monthsMatch ? monthsMatch[1] : '3';
-
       return Response.json({
         role: "assistant",
         isExpenseScan: true,
         months: months,
-        content: `I can help you find forgotten subscriptions.\n\nTo do this safely, here is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?`
+        content: `I can help you find forgotten subscriptions.\n\nHere is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?`
       });
     }
 
-    // ========== EMAIL DRAFT WITH SMART QUESTIONS ==========
+    // ========== EMAIL DRAFT ==========
     if (isEmailDraftIntent(cleanInput)) {
       const extractedEmail = extractEmail(cleanInput);
 
       if (!extractedEmail && !cleanInput.includes('about')) {
-        return Response.json({
-          role: "assistant",
-          content: "Sure, I can send an email for you.\n\nWho should I send it to?"
-        });
+        return Response.json({ role: "assistant", content: "Sure, I can send an email for you.\n\nWho should I send it to?" });
       }
 
       if (extractedEmail && !cleanInput.includes('about') && cleanInput.split(' ').length < 8) {
-        return Response.json({
-          role: "assistant",
-          content: `Got it - sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?`
-        });
+        return Response.json({ role: "assistant", content: `Got it - sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?` });
       }
 
       if (extractedEmail) {
-        const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails. Use proper paragraphs, bullet points when needed, and a warm but professional tone. Never use placeholders like [Your Name]. Write like a skilled human assistant.`;
-
+        const systemPrompt = `Write a professional email. Use proper paragraphs with line breaks. Bullet points when listing items. Warm but professional tone. Never use [Your Name] placeholders. Never use JSON or curly braces. Write like a skilled human assistant.`;
         const responseText = await callGroq([
           { role: "system", content: systemPrompt },
           { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient email: ${extractedEmail}.` }
         ]);
-
         const cleanedText = cleanJSONResponse(responseText, extractedEmail);
-
-        let recipient = extractedEmail;
-        let subject = "Update";
-        let body = cleanedText;
-
-        const toMatch = cleanedText.match(/^To:\s*(.+)$/m);
-        const subjectMatch = cleanedText.match(/^Subject:\s*(.+)$/m);
-        
+        let recipient = extractedEmail, subject = "Update", body = cleanedText;
+        const toMatch = cleanedText.match(/^To:\s*(.+)$/m), subjectMatch = cleanedText.match(/^Subject:\s*(.+)$/m);
         if (toMatch) recipient = toMatch[1].trim();
         if (subjectMatch) subject = subjectMatch[1].trim();
-        
         body = cleanedText.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim();
-
-        return Response.json({
-          role: "assistant",
-          isDraft: true,
-          recipient: recipient,
-          sender: "Your connected Gmail",
-          subject: subject,
-          content: body
-        });
+        return Response.json({ role: "assistant", isDraft: true, recipient, sender: "Your connected Gmail", subject, content: body });
       }
 
-      return Response.json({
-        role: "assistant",
-        content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?"
-      });
+      return Response.json({ role: "assistant", content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?" });
     }
 
-    // ========== DEFAULT CHAT FLOW ==========
-    const chatSystemPrompt = `You are Loop, a polished and professional AI assistant.
+    // ========== DEFAULT CHAT ==========
+    const systemPrompt = `You are Loop, a smart and helpful AI assistant.
 
-HOW YOU PROCESS BEFORE REPLYING:
-1. Read the full message - not just the last sentence. Understand the tone, the energy, the actual need.
-2. Identify what the person actually needs - sometimes what they ask and what they need are different.
-3. Match your energy to theirs - casual in, casual out. Professional in, professional out.
-4. Answer the specific thing asked - not a general version of it.
-5. Keep it as short as it needs to be - and no longer.
+HOW YOU TALK:
+- Warm and direct. Like a skilled colleague, not a corporate robot.
+- Match the user's energy. Casual when they are casual. Professional when they are professional.
+- Be concise. Say what needs saying and nothing more.
 
-YOUR VOICE:
-- Warm, helpful, direct
-- Professional but not robotic
-- Confident but not arrogant
-- Concise - respect the user's time
+HOW YOU FORMAT:
+- Use numbers (1. 2. 3.) for steps or sequences.
+- Use simple dashes (-) for lists and options.
+- Put a blank line between every section and between every list item.
+- Keep paragraphs short. 2-3 sentences max.
+- Use emojis naturally. When the mood fits. Not forced. Not excessive.
 
-FORMATTING RULES - FOLLOW THESE EXACTLY:
+WHAT YOU NEVER DO:
+- Never use markdown. No **, no ###, no *, no __.
+- Never use JSON or curly braces or code blocks unless the user asks for code.
+- Never write walls of text. Break everything into short, readable chunks.
+- Never sound like a template. Every reply should feel specific to the person you are talking to.
 
-NEVER DO THIS:
-**Phase 1** do this **Phase 2** do that
-### Section one
-* item one * item two
-
-ALWAYS DO THIS:
-
-Here is the plan:
-
-1. First, we do this
-
-2. Then we do that
-
-3. Finally, we do this
-
-Which step should we start with?
-
-Or for options:
-
-Here are your options:
-
-- Option one with a short description
-- Option two with a short description
-- Option three with a short description
-
-Which one works best for you?
-
-CRITICAL RULES:
-- Never use **, ###, *, __, or any markdown symbols
-- Use numbers (1. 2. 3.) for sequences and steps
-- Use simple dashes (-) for bullet points and options
-- Put a blank line between every section and every list item
-- Use emojis naturally based on the mood - not forced, not excessive
-- Always end with a clear next step, question, or call to action
-- Be specific to the person in front of you - not a general template`;
+WHAT YOU ALWAYS DO:
+- Read the full message. Understand the actual need behind the words.
+- If something is unclear, ask. Do not guess.
+- End with a clear next step, question, or takeaway.`;
 
     const chatText = await callGroq([
-      { role: "system", content: chatSystemPrompt },
+      { role: "system", content: systemPrompt },
       { role: "user", content: cleanInput }
     ]);
 
     return Response.json({ role: "assistant", content: chatText });
 
   } catch (error: any) {
-    console.error("Pipeline error:", error);
-    return Response.json(
-      { role: "assistant", content: "Something went wrong. Please try again." },
-      { status: 500 }
-    );
+    return Response.json({ role: "assistant", content: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
