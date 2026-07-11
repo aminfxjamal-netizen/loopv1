@@ -15,8 +15,14 @@ function isEmailDraftIntent(text: string): boolean {
 
 function isCalendarIntent(text: string): boolean {
   const lowerText = text.toLowerCase();
-  const calendarKeywords = ['schedule', 'meeting', 'appointment', 'calendar', 'book a meeting', 'set up a call', 'set up a meeting'];
+  const calendarKeywords = ['schedule a meeting', 'book a meeting', 'set up a call', 'set up a meeting', 'send a calendar invite'];
   return calendarKeywords.some(keyword => lowerText.includes(keyword));
+}
+
+function isPersonalCalendarIntent(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  const personalKeywords = ['add to my calendar', 'add to calendar', 'put in my calendar', 'schedule in my calendar', 'remind me'];
+  return personalKeywords.some(keyword => lowerText.includes(keyword));
 }
 
 async function callGroq(messages: any[], maxTokens = 1024) {
@@ -58,7 +64,41 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim();
 
-    // ========== CALENDAR INTENT ==========
+    // ========== PERSONAL CALENDAR ==========
+    if (isPersonalCalendarIntent(cleanInput)) {
+      const today = new Date();
+      let meetingDate = today.toISOString().split('T')[0];
+      if (cleanInput.includes('tomorrow')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+        meetingDate = tomorrow.toISOString().split('T')[0];
+      }
+
+      const timeMatch = cleanInput.match(/(\d{1,2})\s*(AM|PM|am|pm)/i);
+      let meetingTime = '09:00';
+      if (timeMatch) {
+        let hour = parseInt(timeMatch[1]);
+        const ampm = timeMatch[2].toUpperCase();
+        if (ampm === 'PM' && hour < 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        meetingTime = `${hour.toString().padStart(2, '0')}:00`;
+      }
+
+      let title = 'Event';
+      const titleMatch = cleanInput.match(/called\s+(.+)/i) || cleanInput.match(/titled\s+(.+)/i) || cleanInput.match(/named\s+(.+)/i);
+      if (titleMatch) title = titleMatch[1].trim().substring(0, 50);
+
+      return Response.json({
+        role: "assistant",
+        isPersonalCalendar: true,
+        title: title,
+        date: meetingDate,
+        time: meetingTime,
+        content: `Event: ${title}\nDate: ${meetingDate}\nTime: ${meetingTime}`
+      });
+    }
+
+    // ========== CALENDAR INVITE ==========
     if (isCalendarIntent(cleanInput)) {
       const extractedEmail = extractEmail(cleanInput);
       
@@ -98,7 +138,7 @@ export async function POST(req: Request) {
         subject: meetingSubject,
         date: meetingDate,
         time: meetingTime,
-        content: `Meeting: ${meetingSubject}\nWith: ${extractedEmail}\nDate: ${meetingDate}\nTime: ${meetingTime}\n\nWould you like me to schedule this and send a calendar invite?`
+        content: `Meeting: ${meetingSubject}\nWith: ${extractedEmail}\nDate: ${meetingDate}\nTime: ${meetingTime}`
       });
     }
 
