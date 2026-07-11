@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, Settings, Plus,
   X, Mail, HardDrive, Layers,
-  FolderOpen, Upload, Menu, Clock, FileText
+  FolderOpen, Upload, Menu, Clock, FileText, Search
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGmailCredentials } from '@/hooks/useGmailCredentials';
+import { useDriveCredentials } from '@/hooks/useDriveCredentials';
 import { getConversations, getMessages, createConversation, saveMessage } from '@/lib/chat-service';
 import { supabase } from '@/lib/supabase';
 import { addFollowUp, getDueFollowUps, markFollowUpComplete } from '@/lib/followup-service';
@@ -22,6 +23,8 @@ interface Message {
   subject?: string;
   isExpenseScan?: boolean;
   months?: string;
+  isDriveSearch?: boolean;
+  query?: string;
   isFileSummary?: boolean;
   fileName?: string;
   isFollowUpPrompt?: boolean;
@@ -79,6 +82,9 @@ export default function Workspace() {
   const [showGmailForm, setShowGmailForm] = useState(false);
   const [gmailEmail, setGmailEmail] = useState('');
   const [gmailPassword, setGmailPassword] = useState('');
+  const [showDriveForm, setShowDriveForm] = useState(false);
+  const [driveEmail, setDriveEmail] = useState('');
+  const [drivePassword, setDrivePassword] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -95,6 +101,7 @@ export default function Workspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { credentials, isConfigured, saveCredentials, removeCredentials } = useGmailCredentials();
+  const { credentials: driveCreds, isConfigured: driveIsConfigured, saveCredentials: saveDriveCreds, removeCredentials: removeDriveCreds } = useDriveCredentials();
 
   useEffect(() => {
     const stored = localStorage.getItem('loop_user_data');
@@ -136,28 +143,16 @@ export default function Workspace() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setShowPlusMenu(false);
-    setIsLoading(true);
+    setShowPlusMenu(false); setIsLoading(true);
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'user', content: `Uploaded: ${file.name}` }]);
-
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const formData = new FormData(); formData.append('file', file);
       const response = await fetch('/api/summarize', { method: 'POST', body: formData });
       const data = await response.json();
-
-      if (data.success) {
-        setLastUploadedFile({ name: file.name, content: data.summary });
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.summary, isFileSummary: true, fileName: file.name }]);
-      } else {
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Could not summarize the file: ${data.error}` }]);
-      }
-    } catch {
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to process the file.' }]);
-    } finally {
-      setIsLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+      if (data.success) { setLastUploadedFile({ name: file.name, content: data.summary }); setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.summary, isFileSummary: true, fileName: file.name }]); }
+      else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Could not summarize: ${data.error}` }]); }
+    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to process the file.' }]); }
+    finally { setIsLoading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
   const handleSendMessage = async (e?: React.FormEvent) => {
@@ -168,26 +163,13 @@ export default function Workspace() {
     setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'user', content: userContent }]);
     setInputValue(''); setIsLoading(true); incrementMessageCount();
 
-    // If user is asking about the last uploaded file
     if (lastUploadedFile && (userContent.toLowerCase().includes('file') || userContent.toLowerCase().includes('document') || userContent.toLowerCase().includes('summary'))) {
       try {
-        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-              { role: "system", content: "You are Loop. Answer questions about the uploaded file based on its content. Be concise and helpful. No markdown." },
-              { role: "user", content: `File name: ${lastUploadedFile.name}\nFile content: ${lastUploadedFile.content}\n\nUser question: ${userContent}` }
-            ],
-            temperature: 0.7, max_tokens: 1024
-          })
-        });
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: "Answer questions about the uploaded file based on its content. Be concise. No markdown." }, { role: "user", content: `File: ${lastUploadedFile.name}\nContent: ${lastUploadedFile.content}\n\nQuestion: ${userContent}` }], temperature: 0.7, max_tokens: 1024 }) });
         const data = await groqResponse.json();
         setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.choices[0].message.content }]);
-      } catch {
-        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Could not answer that question.' }]);
-      } finally { setIsLoading(false); }
+      } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Could not answer that.' }]); }
+      finally { setIsLoading(false); }
       return;
     }
 
@@ -198,7 +180,7 @@ export default function Workspace() {
       const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: userContent }] }) });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
-      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isExpenseScan: data.isExpenseScan || false, months: data.months || '', recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '' };
+      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isExpenseScan: data.isExpenseScan || false, isDriveSearch: data.isDriveSearch || false, query: data.query || '', months: data.months || '', recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '' };
       if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
       setMessages(prev => [...prev, am]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Something went wrong. Please try again.' }]); }
@@ -206,7 +188,6 @@ export default function Workspace() {
   };
 
   const loadConversation = async (convId: string) => { setActiveConversationId(convId); setSidebarOpen(false); try { const msgs = await getMessages(convId); setMessages((msgs || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, isDraft: m.is_draft, recipient: m.recipient || '', subject: m.subject || '' }))); } catch {} };
-
   const handleApproveDraft = async (message: Message) => {
     if (!message.recipient || !message.subject) return;
     if (isOverLimit()) { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Limit reached. Resets in ${getLimitResetHours()} hours.` }]); return; }
@@ -217,6 +198,21 @@ export default function Workspace() {
       if (data.success) { setPendingFollowUp({ recipient: message.recipient, subject: message.subject }); setShowFollowUpOptions(true); setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Email sent to ${message.recipient}. When should I follow up if there is no reply?` }]); }
       else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]); }
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to send email.' }]); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleSearchDrive = async (query: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/drive-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, email: driveCreds?.email || credentials?.email || '', appPassword: driveCreds?.appPassword || credentials?.appPassword || '' }) });
+      const data = await response.json();
+      if (data.success && data.files && data.files.length > 0) {
+        const fileList = data.files.map((f: any, i: number) => `${i + 1}. ${f.name} (${new Date(f.modified).toLocaleDateString()})`).join('\n');
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Found ${data.count} files:\n\n${fileList}\n\nUpload any of these files and I can summarize them.` }]);
+      } else {
+        setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.message || 'No files found.' }]);
+      }
+    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Drive search failed. Try uploading the file directly.' }]); }
     finally { setIsLoading(false); }
   };
 
@@ -254,6 +250,7 @@ export default function Workspace() {
 
   const skipFollowUp = (followUpId: string) => { markFollowUpComplete(followUpId); setMessages(prev => prev.filter(m => m.followUpId !== followUpId)); };
   const handleConnectGmail = () => { if (gmailEmail && gmailPassword) { saveCredentials(gmailEmail, gmailPassword); setGmailEmail(''); setGmailPassword(''); setShowGmailForm(false); } };
+  const handleConnectDrive = () => { if (driveEmail && drivePassword) { saveDriveCreds(driveEmail, drivePassword); setDriveEmail(''); setDrivePassword(''); setShowDriveForm(false); } };
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   return (
@@ -278,7 +275,7 @@ export default function Workspace() {
         <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0"><div className="flex items-center gap-3"><button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button><h1 className="text-sm font-medium text-gray-300 truncate">{activeConversation ? activeConversation.title : 'New Conversation'}</h1></div></header>
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Scan my subscriptions")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Scan my subscriptions</button><button onClick={() => setInputValue("Summarize my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Summarize my files</button></div></div>
+            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Scan my subscriptions")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Scan my subscriptions</button><button onClick={() => setInputValue("Find my March report")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Find my March report</button></div></div>
           ) : (
             <div className="max-w-[680px] mx-auto px-4 py-8 space-y-6">
               {messages.map((msg) => (
@@ -301,6 +298,12 @@ export default function Workspace() {
                       <div className="flex items-center gap-2 mb-3"><FileText size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">File Summary: {msg.fileName}</span></div>
                       <div className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{msg.content}</div>
                       <p className="text-xs text-gray-500 mt-3">You can ask me questions about this file.</p>
+                    </div>
+                  ) : msg.isDriveSearch ? (
+                    <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
+                      <div className="flex items-center gap-2 mb-3"><Search size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Drive Search</span></div>
+                      <p className="text-sm text-gray-300 mb-3">{msg.content}</p>
+                      <button onClick={() => handleSearchDrive(msg.query || '')} className="bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-600 transition">Search Drive</button>
                     </div>
                   ) : msg.isExpenseScan ? (
                     <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
@@ -353,7 +356,7 @@ export default function Workspace() {
                 {showPlusMenu && (
                   <div className="absolute bottom-full left-0 mb-2 w-60 bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
                     <button onClick={() => { setShowPlusMenu(false); fileInputRef.current?.click(); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left"><Upload size={16} className="text-blue-400" /><div><div className="font-medium">Upload File</div><div className="text-xs text-gray-500">Upload and summarize any document</div></div></button>
-                    <button onClick={() => setShowPlusMenu(false)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left border-t border-white/5"><FolderOpen size={16} className="text-blue-400" /><div><div className="font-medium">Access Files</div><div className="text-xs text-gray-500">Give Loop access to your Drive</div></div></button>
+                    <button onClick={() => setShowPlusMenu(false)} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-300 hover:bg-white/5 transition-colors text-left border-t border-white/5"><FolderOpen size={16} className="text-blue-400" /><div><div className="font-medium">Access Drive</div><div className="text-xs text-gray-500">Connect Google Drive</div></div></button>
                   </div>
                 )}
               </div>
@@ -368,7 +371,7 @@ export default function Workspace() {
           <div className="flex items-center justify-between mb-1"><h2 className="text-lg font-semibold text-white">Connected Apps</h2><button onClick={() => setShowConnectedApps(false)} className="text-gray-500 hover:text-white"><X size={20} /></button></div>
           <p className="text-sm text-gray-500 mb-6">Manage your integrations</p>
           <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><Mail size={18} className="text-red-400" /><span className="text-white font-medium text-sm">Gmail</span><span className={`h-2 w-2 rounded-full ml-auto ${isConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{isConfigured ? `Connected as ${credentials?.email}` : 'Send emails and track follow-ups.'}</p>{isConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeCredentials} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showGmailForm && (<div className="mt-3 space-y-2"><input type="email" value={gmailEmail} onChange={(e) => setGmailEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={gmailPassword} onChange={(e) => setGmailPassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectGmail} disabled={!gmailEmail || !gmailPassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4 opacity-50"><div className="flex items-center gap-2"><HardDrive size={18} className="text-yellow-400" /><span className="text-gray-500 font-medium text-sm">Drive</span><span className="bg-white/5 text-gray-600 text-[10px] px-2 py-0.5 rounded-full ml-auto">Soon</span></div><p className="text-xs text-gray-600 mt-2">Access and summarize your files.</p></div>
+          <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><HardDrive size={18} className="text-yellow-400" /><span className="text-white font-medium text-sm">Drive</span><span className={`h-2 w-2 rounded-full ml-auto ${driveIsConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{driveIsConfigured ? `Connected as ${driveCreds?.email}` : 'Search and access your Drive files.'}</p>{driveIsConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowDriveForm(!showDriveForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeDriveCreds} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowDriveForm(!showDriveForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showDriveForm && (<div className="mt-3 space-y-2"><input type="email" value={driveEmail} onChange={(e) => setDriveEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={drivePassword} onChange={(e) => setDrivePassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectDrive} disabled={!driveEmail || !drivePassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
         </div>
       </main>
     </div>
