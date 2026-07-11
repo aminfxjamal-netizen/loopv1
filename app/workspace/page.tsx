@@ -153,8 +153,7 @@ export default function Workspace() {
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       let recipient = data.recipient || '', subject = data.subject || '', body = data.content || '';
-      if ((data.isDraft || data.isCalendar || data.isPersonalCalendar) && data.content) { const tm = data.content.match(/^To:\s*(.+)$/m), sm = data.content.match(/^Subject:\s*(.+)$/m); if (tm) recipient = tm[1].trim(); if (sm) subject = sm[1].trim(); body = data.content.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim(); }
-      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: body, isDraft: data.isDraft || false, isCalendar: data.isCalendar || false, isPersonalCalendar: data.isPersonalCalendar || false, recipient, sender: credentials?.email || 'Not connected', subject, title: data.title || '', date: data.date || '', time: data.time || '' };
+      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isCalendar: data.isCalendar || false, isPersonalCalendar: data.isPersonalCalendar || false, recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '', title: data.title || '', date: data.date || '', time: data.time || '' };
       if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
       setMessages(prev => [...prev, am]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Something went wrong. Please try again.' }]); }
@@ -182,23 +181,21 @@ export default function Workspace() {
     try {
       const response = await fetch('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, date: message.date, time: message.time, duration: '60', email: calCredentials?.email || credentials?.email || '', appPassword: calCredentials?.appPassword || credentials?.appPassword || '' }) });
       const data = await response.json();
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.success ? `Calendar invite sent to ${message.recipient} for ${message.date} at ${message.time}. Check your email to add it to your calendar.` : `Failed: ${data.error}` }]);
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.success ? `Calendar invite sent to ${message.recipient} for ${message.date} at ${message.time}.` : `Failed: ${data.error}` }]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to schedule meeting.' }]); }
     finally { setIsLoading(false); }
   };
 
-  const handleDownloadICS = async (message: Message) => {
+  const handleOpenICS = async (message: Message) => {
     if (!message.title || !message.date || !message.time) return;
     try {
       const response = await fetch('/api/ics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: message.title, date: message.date, time: message.time }) });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'loop-event.ics';
-      document.body.appendChild(a); a.click(); a.remove();
-      window.URL.revokeObjectURL(url);
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Event "${message.title}" downloaded. Open it to add to your calendar.` }]);
-    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to download calendar file.' }]); }
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Event "${message.title}" added to your calendar.` }]);
+    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to create calendar event.' }]); }
   };
 
   const scheduleFollowUp = (minutes: number) => {
@@ -296,7 +293,7 @@ export default function Workspace() {
                       <div className="text-sm font-semibold text-white mb-1">{msg.title}</div>
                       <div className="text-sm text-gray-300 mb-1">Date: {msg.date}</div>
                       <div className="text-sm text-gray-300 mb-3">Time: {msg.time}</div>
-                      <button onClick={() => handleDownloadICS(msg)} className="bg-green-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-green-600 transition">Download & Add to Calendar</button>
+                      <button onClick={() => handleOpenICS(msg)} className="bg-green-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-green-600 transition">Add to Calendar</button>
                     </div>
                   ) : msg.isFollowUpPrompt ? (
                     <div className="bg-[#0d0d0d] border border-yellow-500/30 rounded-2xl p-4 max-w-[85%] w-full">
