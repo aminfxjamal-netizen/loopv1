@@ -3,12 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, Send, Settings, Plus,
-  X, Mail, Calendar, HardDrive, Layers,
+  X, Mail, HardDrive, Layers,
   FolderOpen, Upload, Menu, Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGmailCredentials } from '@/hooks/useGmailCredentials';
-import { useCalendarCredentials } from '@/hooks/useCalendarCredentials';
 import { getConversations, getMessages, createConversation, saveMessage } from '@/lib/chat-service';
 import { supabase } from '@/lib/supabase';
 import { addFollowUp, getDueFollowUps, markFollowUpComplete } from '@/lib/followup-service';
@@ -21,11 +20,8 @@ interface Message {
   recipient?: string;
   sender?: string;
   subject?: string;
-  isCalendar?: boolean;
-  isPersonalCalendar?: boolean;
-  title?: string;
-  date?: string;
-  time?: string;
+  isExpenseScan?: boolean;
+  months?: string;
   isFollowUpPrompt?: boolean;
   followUpId?: string;
   followUpRecipient?: string;
@@ -81,9 +77,6 @@ export default function Workspace() {
   const [showGmailForm, setShowGmailForm] = useState(false);
   const [gmailEmail, setGmailEmail] = useState('');
   const [gmailPassword, setGmailPassword] = useState('');
-  const [showCalendarForm, setShowCalendarForm] = useState(false);
-  const [calEmail, setCalEmail] = useState('');
-  const [calPassword, setCalPassword] = useState('');
   const [conversations, setConversations] = useState<any[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -99,7 +92,6 @@ export default function Workspace() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { credentials, isConfigured, saveCredentials, removeCredentials } = useGmailCredentials();
-  const { credentials: calCredentials, isConfigured: calIsConfigured, saveCredentials: saveCalCredentials, removeCredentials: removeCalCredentials } = useCalendarCredentials();
 
   useEffect(() => {
     const stored = localStorage.getItem('loop_user_data');
@@ -152,14 +144,14 @@ export default function Workspace() {
       const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: userContent }] }) });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
-      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isCalendar: data.isCalendar || false, isPersonalCalendar: data.isPersonalCalendar || false, recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '', title: data.title || '', date: data.date || '', time: data.time || '' };
+      const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isExpenseScan: data.isExpenseScan || false, months: data.months || '', recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '' };
       if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
       setMessages(prev => [...prev, am]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Something went wrong. Please try again.' }]); }
     finally { setIsLoading(false); }
   };
 
-  const loadConversation = async (convId: string) => { setActiveConversationId(convId); setSidebarOpen(false); try { const msgs = await getMessages(convId); setMessages((msgs || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, isDraft: m.is_draft, isCalendar: m.is_calendar, isPersonalCalendar: m.is_personal_calendar, recipient: m.recipient || '', subject: m.subject || '', title: m.title || '', date: m.date || '', time: m.time || '' }))); } catch {} };
+  const loadConversation = async (convId: string) => { setActiveConversationId(convId); setSidebarOpen(false); try { const msgs = await getMessages(convId); setMessages((msgs || []).map((m: any) => ({ id: m.id, role: m.role, content: m.content, isDraft: m.is_draft, recipient: m.recipient || '', subject: m.subject || '' }))); } catch {} };
 
   const handleApproveDraft = async (message: Message) => {
     if (!message.recipient || !message.subject) return;
@@ -172,34 +164,6 @@ export default function Workspace() {
       else { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Failed to send: ${data.error || 'Unknown error'}` }]); }
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to send email.' }]); }
     finally { setIsLoading(false); }
-  };
-
-  const handleApproveCalendar = async (message: Message) => {
-    if (!message.recipient || !message.date || !message.time) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/calendar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: message.recipient, subject: message.subject, date: message.date, time: message.time, duration: '60', email: calCredentials?.email || credentials?.email || '', appPassword: calCredentials?.appPassword || credentials?.appPassword || '' }) });
-      const data = await response.json();
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.success ? `Calendar invite sent to ${message.recipient} for ${message.date} at ${message.time}.` : `Failed: ${data.error}` }]);
-    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to schedule meeting.' }]); }
-    finally { setIsLoading(false); }
-  };
-
-  const handleDownloadICS = async (message: Message) => {
-    if (!message.title || !message.date || !message.time) return;
-    try {
-      const response = await fetch('/api/ics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: message.title, date: message.date, time: message.time }) });
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `loop-event.ics`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Event "${message.title}" downloaded. Open it to add to your calendar.` }]);
-    } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to create calendar event.' }]); }
   };
 
   const scheduleFollowUp = (minutes: number) => {
@@ -236,7 +200,6 @@ export default function Workspace() {
 
   const skipFollowUp = (followUpId: string) => { markFollowUpComplete(followUpId); setMessages(prev => prev.filter(m => m.followUpId !== followUpId)); };
   const handleConnectGmail = () => { if (gmailEmail && gmailPassword) { saveCredentials(gmailEmail, gmailPassword); setGmailEmail(''); setGmailPassword(''); setShowGmailForm(false); } };
-  const handleConnectCalendar = () => { if (calEmail && calPassword) { saveCalCredentials(calEmail, calPassword); setCalEmail(''); setCalPassword(''); setShowCalendarForm(false); } };
   const activeConversation = conversations.find(c => c.id === activeConversationId);
 
   return (
@@ -261,7 +224,7 @@ export default function Workspace() {
         <header className="flex items-center justify-between px-4 py-3 border-b border-white/5 shrink-0"><div className="flex items-center gap-3"><button className="md:hidden text-gray-400 hover:text-white" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button><h1 className="text-sm font-medium text-gray-300 truncate">{activeConversation ? activeConversation.title : 'New Conversation'}</h1></div></header>
         <div className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Schedule a meeting")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Schedule a meeting</button><button onClick={() => setInputValue("Summarize my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Summarize my files</button></div></div>
+            <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto h-full px-4 py-16"><h1 className="text-2xl font-semibold text-white tracking-tight">What do you want to get done?</h1><p className="text-gray-400 text-sm mt-2">Tell Loop what you need in plain language. It will handle the rest.</p><div className="flex flex-wrap gap-3 mt-8 justify-center"><button onClick={() => setInputValue("Draft a client update email")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Draft a client update email</button><button onClick={() => setInputValue("Scan my subscriptions")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Scan my subscriptions</button><button onClick={() => setInputValue("Find my files")} className="bg-white/5 border border-white/5 text-gray-300 text-sm px-4 py-2 rounded-full hover:bg-white/10 transition-colors">Find my files</button></div></div>
           ) : (
             <div className="max-w-[680px] mx-auto px-4 py-8 space-y-6">
               {messages.map((msg) => (
@@ -279,25 +242,10 @@ export default function Workspace() {
                         <button className="text-gray-500 text-sm px-4 py-2.5 hover:text-gray-300 transition ml-auto">Cancel</button>
                       </div>
                     </div>
-                  ) : msg.isCalendar ? (
+                  ) : msg.isExpenseScan ? (
                     <div className="bg-[#0d0d0d] border border-blue-500/30 rounded-2xl p-5 max-w-[85%] w-full">
-                      <div className="flex items-center gap-2 mb-3"><Calendar size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Calendar Invite</span></div>
-                      <div className="text-xs text-gray-500 mb-1">To: {msg.recipient}</div>
-                      <div className="text-sm font-semibold text-white mb-1">{msg.subject}</div>
-                      <div className="text-sm text-gray-300 mb-1">Date: {msg.date}</div>
-                      <div className="text-sm text-gray-300 mb-3">Time: {msg.time}</div>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleApproveCalendar(msg)} disabled={isLoading} className="bg-blue-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-blue-600 transition disabled:opacity-50">Schedule & Send Invite</button>
-                        <button className="text-gray-500 text-sm px-4 py-2.5 hover:text-gray-300 transition ml-auto">Cancel</button>
-                      </div>
-                    </div>
-                  ) : msg.isPersonalCalendar ? (
-                    <div className="bg-[#0d0d0d] border border-green-500/30 rounded-2xl p-5 max-w-[85%] w-full">
-                      <div className="flex items-center gap-2 mb-3"><Calendar size={16} className="text-green-400" /><span className="text-xs font-medium text-green-400 uppercase tracking-wide">Add to Calendar</span></div>
-                      <div className="text-sm font-semibold text-white mb-1">{msg.title}</div>
-                      <div className="text-sm text-gray-300 mb-1">Date: {msg.date}</div>
-                      <div className="text-sm text-gray-300 mb-3">Time: {msg.time}</div>
-                      <button onClick={() => handleDownloadICS(msg)} className="bg-green-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-green-600 transition">Add to Calendar</button>
+                      <div className="flex items-center gap-2 mb-3"><Clock size={16} className="text-blue-400" /><span className="text-xs font-medium text-blue-400 uppercase tracking-wide">Expense Tracker</span></div>
+                      <p className="text-sm text-gray-300 mb-3">{msg.content}</p>
                     </div>
                   ) : msg.isFollowUpPrompt ? (
                     <div className="bg-[#0d0d0d] border border-yellow-500/30 rounded-2xl p-4 max-w-[85%] w-full">
@@ -322,7 +270,7 @@ export default function Workspace() {
                       <button onClick={() => scheduleFollowUp(120)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Later today</button>
                       <button onClick={() => scheduleFollowUp(1440)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Tomorrow</button>
                       <button onClick={() => scheduleFollowUp(4320)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">In 3 days</button>
-                      <button onClick={() => setShowCustomDate(!showCustomDate)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition"><Calendar size={14} className="inline mr-1" />Custom</button>
+                      <button onClick={() => setShowCustomDate(!showCustomDate)} className="bg-white/5 text-gray-300 text-xs px-3 py-1.5 rounded-lg hover:bg-white/10 transition">Custom</button>
                     </div>
                     {showCustomDate && (
                       <div className="flex gap-2">
@@ -360,7 +308,6 @@ export default function Workspace() {
           <div className="flex items-center justify-between mb-1"><h2 className="text-lg font-semibold text-white">Connected Apps</h2><button onClick={() => setShowConnectedApps(false)} className="text-gray-500 hover:text-white"><X size={20} /></button></div>
           <p className="text-sm text-gray-500 mb-6">Manage your integrations</p>
           <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><Mail size={18} className="text-red-400" /><span className="text-white font-medium text-sm">Gmail</span><span className={`h-2 w-2 rounded-full ml-auto ${isConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{isConfigured ? `Connected as ${credentials?.email}` : 'Send emails and track follow-ups.'}</p>{isConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeCredentials} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowGmailForm(!showGmailForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showGmailForm && (<div className="mt-3 space-y-2"><input type="email" value={gmailEmail} onChange={(e) => setGmailEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={gmailPassword} onChange={(e) => setGmailPassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectGmail} disabled={!gmailEmail || !gmailPassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
-          <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4"><div className="flex items-center gap-2"><Calendar size={18} className="text-blue-400" /><span className="text-white font-medium text-sm">Calendar</span><span className={`h-2 w-2 rounded-full ml-auto ${calIsConfigured ? 'bg-green-500' : 'bg-gray-600'}`}></span></div><p className="text-xs text-gray-500 mt-2">{calIsConfigured ? `Connected as ${calCredentials?.email}` : 'Schedule meetings and send calendar invites.'}</p>{calIsConfigured ? (<div className="flex gap-2 mt-3"><button onClick={() => setShowCalendarForm(!showCalendarForm)} className="bg-white/10 text-gray-300 text-sm px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Change</button><button onClick={removeCalCredentials} className="text-red-400 text-sm px-3 py-1.5 hover:text-red-300 transition">Disconnect</button></div>) : (<button onClick={() => setShowCalendarForm(!showCalendarForm)} className="bg-blue-500 text-white text-sm font-medium px-4 py-1.5 rounded-lg mt-3 hover:bg-blue-600 transition">Connect</button>)}{showCalendarForm && (<div className="mt-3 space-y-2"><input type="email" value={calEmail} onChange={(e) => setCalEmail(e.target.value)} placeholder="Your Gmail address" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><input type="password" value={calPassword} onChange={(e) => setCalPassword(e.target.value)} placeholder="App Password" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" /><button onClick={handleConnectCalendar} disabled={!calEmail || !calPassword} className="w-full bg-blue-500 text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50">Save & Connect</button></div>)}</div>
           <div className="bg-white/5 rounded-xl p-4 border border-white/5 mb-4 opacity-50"><div className="flex items-center gap-2"><HardDrive size={18} className="text-yellow-400" /><span className="text-gray-500 font-medium text-sm">Drive</span><span className="bg-white/5 text-gray-600 text-[10px] px-2 py-0.5 rounded-full ml-auto">Soon</span></div><p className="text-xs text-gray-600 mt-2">Access and summarize your files.</p></div>
         </div>
       </main>
