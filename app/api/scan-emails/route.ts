@@ -1,7 +1,7 @@
 // @ts-nocheck
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   try {
     const { email, appPassword, months } = await req.json();
 
@@ -26,17 +26,17 @@ export async function POST(req: Request) {
     const searchSince = new Date();
     searchSince.setMonth(searchSince.getMonth() - (parseInt(months) || 3));
 
-    return new Promise((resolve) => {
+    return new Promise<Response>((resolve) => {
       imap.once('ready', () => {
         imap.openBox('INBOX', false, () => {
-          imap.search([['SINCE', searchSince.toISOString()]], (err: any, results: any) => {
-            if (err || !results || results.length === 0) {
+          imap.search([['SINCE', searchSince.toISOString()]], (err: any, searchResults: any) => {
+            if (err || !searchResults || searchResults.length === 0) {
               imap.end();
               resolve(Response.json({ success: true, subscriptions: [], message: "No billing emails found in the selected timeframe." }));
               return;
             }
 
-            const latest = results.slice(-200);
+            const latest = searchResults.slice(-200);
             const fetch = imap.fetch(latest, { bodies: '' });
 
             fetch.on('message', (msg: any) => {
@@ -44,8 +44,8 @@ export async function POST(req: Request) {
                 simpleParser(stream, (parseErr: any, parsed: any) => {
                   if (parseErr) return;
                   const subject = (parsed.subject || '').toLowerCase();
-                  const body = (parsed.text || '').toLowerCase();
-                  const combined = subject + ' ' + body;
+                  const textBody = (parsed.text || '').toLowerCase();
+                  const combined = subject + ' ' + textBody;
 
                   if (billingKeywords.some(kw => combined.includes(kw))) {
                     const amountMatch = combined.match(/\$\s*(\d+(\.\d{2})?)/) || combined.match(/(\d+(\.\d{2})?)\s*usd/i);
