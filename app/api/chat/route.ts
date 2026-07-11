@@ -13,18 +13,6 @@ function isEmailDraftIntent(text: string): boolean {
   return draftKeywords.some(keyword => lowerText.includes(keyword));
 }
 
-function isCalendarIntent(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  const calendarKeywords = ['schedule a meeting', 'book a meeting', 'set up a call', 'set up a meeting', 'send a calendar invite'];
-  return calendarKeywords.some(keyword => lowerText.includes(keyword));
-}
-
-function isPersonalCalendarIntent(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  const personalKeywords = ['add to my calendar', 'add to calendar', 'put in my calendar', 'schedule in my calendar', 'remind me', 'schedule for me', 'schedule something'];
-  return personalKeywords.some(keyword => lowerText.includes(keyword));
-}
-
 function isExpenseScanIntent(text: string): boolean {
   const lowerText = text.toLowerCase();
   const scanKeywords = ['scan my subscriptions', 'scan subscriptions', 'scan my expenses', 'find subscriptions', 'track my subscriptions', 'check my subscriptions'];
@@ -79,85 +67,7 @@ export async function POST(req: Request) {
         role: "assistant",
         isExpenseScan: true,
         months: months,
-        content: `I can help you find forgotten subscriptions 💸\n\nTo do this safely, I will not scan your inbox automatically. Instead, here is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?`
-      });
-    }
-
-    // ========== PERSONAL CALENDAR ==========
-    if (isPersonalCalendarIntent(cleanInput)) {
-      const today = new Date();
-      let meetingDate = today.toISOString().split('T')[0];
-      if (cleanInput.includes('tomorrow')) {
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        meetingDate = tomorrow.toISOString().split('T')[0];
-      }
-
-      const timeMatch = cleanInput.match(/(\d{1,2})\s*(AM|PM|am|pm)/i);
-      let meetingTime = '09:00';
-      if (timeMatch) {
-        let hour = parseInt(timeMatch[1]);
-        const ampm = timeMatch[2].toUpperCase();
-        if (ampm === 'PM' && hour < 12) hour += 12;
-        if (ampm === 'AM' && hour === 12) hour = 0;
-        meetingTime = `${hour.toString().padStart(2, '0')}:00`;
-      }
-
-      let title = 'Event';
-      const titleMatch = cleanInput.match(/called\s+(.+)/i) || cleanInput.match(/titled\s+(.+)/i) || cleanInput.match(/named\s+(.+)/i);
-      if (titleMatch) title = titleMatch[1].trim().substring(0, 50);
-
-      return Response.json({
-        role: "assistant",
-        isPersonalCalendar: true,
-        title: title,
-        date: meetingDate,
-        time: meetingTime,
-        content: `Here is your event 📅\n\n${title}\n${meetingDate}\n${meetingTime}\n\nClick below to add it to your calendar.`
-      });
-    }
-
-    // ========== CALENDAR INVITE ==========
-    if (isCalendarIntent(cleanInput)) {
-      const extractedEmail = extractEmail(cleanInput);
-      
-      if (!extractedEmail) {
-        return Response.json({
-          role: "assistant",
-          content: "I can schedule that meeting.\n\nWhat email address should I send the invite to?"
-        });
-      }
-
-      const today = new Date();
-      let meetingDate = today.toISOString().split('T')[0];
-      if (cleanInput.includes('tomorrow')) {
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
-        meetingDate = tomorrow.toISOString().split('T')[0];
-      }
-
-      const timeMatch = cleanInput.match(/(\d{1,2})\s*(AM|PM|am|pm)/i);
-      let meetingTime = '10:00';
-      if (timeMatch) {
-        let hour = parseInt(timeMatch[1]);
-        const ampm = timeMatch[2].toUpperCase();
-        if (ampm === 'PM' && hour < 12) hour += 12;
-        if (ampm === 'AM' && hour === 12) hour = 0;
-        meetingTime = `${hour.toString().padStart(2, '0')}:00`;
-      }
-
-      let meetingSubject = 'Meeting';
-      const aboutMatch = cleanInput.match(/about\s+(.+)/i);
-      if (aboutMatch) meetingSubject = aboutMatch[1].trim().substring(0, 50);
-
-      return Response.json({
-        role: "assistant",
-        isCalendar: true,
-        recipient: extractedEmail,
-        subject: meetingSubject,
-        date: meetingDate,
-        time: meetingTime,
-        content: `Here is the meeting invite:\n\n${meetingSubject}\nWith: ${extractedEmail}\n${meetingDate}\n${meetingTime}\n\nReady to send the calendar invite.`
+        content: `I can help you find forgotten subscriptions.\n\nTo do this safely, here is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?`
       });
     }
 
@@ -175,21 +85,12 @@ export async function POST(req: Request) {
       if (extractedEmail && !cleanInput.includes('about') && cleanInput.split(' ').length < 8) {
         return Response.json({
           role: "assistant",
-          content: `Got it — sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?`
+          content: `Got it - sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?`
         });
       }
 
       if (extractedEmail) {
-        const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails.
-
-Format:
-- Use clear subject lines
-- Use proper paragraphs with line breaks
-- Use bullet points when listing items
-- Keep a warm but professional tone
-- Never use [Your Name] placeholders
-- Never use JSON or curly braces
-- Write like a skilled human assistant`;
+        const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails. Use proper paragraphs, bullet points when needed, and a warm but professional tone. Never use placeholders like [Your Name]. Write like a skilled human assistant.`;
 
         const responseText = await callGroq([
           { role: "system", content: systemPrompt },
@@ -230,19 +131,19 @@ Format:
     const chatSystemPrompt = `You are Loop, a polished and professional AI assistant.
 
 HOW YOU PROCESS BEFORE REPLYING:
-1. Read the full message — not just the last sentence. Understand the tone, the energy, the actual need.
-2. Identify what the person actually needs — sometimes what they ask and what they need are different.
-3. Match your energy to theirs — casual in, casual out. Professional in, professional out.
-4. Answer the specific thing asked — not a general version of it.
-5. Keep it as short as it needs to be — and no longer.
+1. Read the full message - not just the last sentence. Understand the tone, the energy, the actual need.
+2. Identify what the person actually needs - sometimes what they ask and what they need are different.
+3. Match your energy to theirs - casual in, casual out. Professional in, professional out.
+4. Answer the specific thing asked - not a general version of it.
+5. Keep it as short as it needs to be - and no longer.
 
 YOUR VOICE:
 - Warm, helpful, direct
 - Professional but not robotic
 - Confident but not arrogant
-- Concise — respect the user's time
+- Concise - respect the user's time
 
-FORMATTING RULES — FOLLOW THESE EXACTLY:
+FORMATTING RULES - FOLLOW THESE EXACTLY:
 
 NEVER DO THIS:
 **Phase 1** do this **Phase 2** do that
@@ -276,9 +177,9 @@ CRITICAL RULES:
 - Use numbers (1. 2. 3.) for sequences and steps
 - Use simple dashes (-) for bullet points and options
 - Put a blank line between every section and every list item
-- Use emojis naturally based on the mood — not forced, not excessive
+- Use emojis naturally based on the mood - not forced, not excessive
 - Always end with a clear next step, question, or call to action
-- Be specific to the person in front of you — not a general template`;
+- Be specific to the person in front of you - not a general template`;
 
     const chatText = await callGroq([
       { role: "system", content: chatSystemPrompt },
