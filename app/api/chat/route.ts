@@ -25,6 +25,12 @@ function isPersonalCalendarIntent(text: string): boolean {
   return personalKeywords.some(keyword => lowerText.includes(keyword));
 }
 
+function isExpenseScanIntent(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  const scanKeywords = ['scan my subscriptions', 'scan subscriptions', 'scan my expenses', 'find subscriptions', 'track my subscriptions', 'check my subscriptions'];
+  return scanKeywords.some(keyword => lowerText.includes(keyword));
+}
+
 async function callGroq(messages: any[], maxTokens = 1024) {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -64,72 +70,16 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim();
 
-    // ========== EMAIL DRAFT WITH SMART QUESTIONS ==========
-    if (isEmailDraftIntent(cleanInput)) {
-      const extractedEmail = extractEmail(cleanInput);
+    // ========== EXPENSE & SAAS TRACKER ==========
+    if (isExpenseScanIntent(cleanInput)) {
+      const monthsMatch = cleanInput.match(/(\d+)\s*months?/i);
+      const months = monthsMatch ? monthsMatch[1] : '3';
 
-      // No email and no subject/body details
-      if (!extractedEmail && !cleanInput.includes('about')) {
-        return Response.json({
-          role: "assistant",
-          content: "Sure, I can send an email for you.\n\nWho should I send it to?"
-        });
-      }
-
-      // Has email but no subject/body
-      if (extractedEmail && !cleanInput.includes('about') && cleanInput.split(' ').length < 8) {
-        return Response.json({
-          role: "assistant",
-          content: `Got it — sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?`
-        });
-      }
-
-      // Has email and has details — draft it
-      if (extractedEmail) {
-        const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails.
-
-Format:
-- Use clear subject lines
-- Use proper paragraphs with line breaks
-- Use bullet points when listing items
-- Keep a warm but professional tone
-- Never use [Your Name] placeholders
-- Never use JSON or curly braces
-- Write like a skilled human assistant`;
-
-        const responseText = await callGroq([
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient email: ${extractedEmail}.` }
-        ]);
-
-        const cleanedText = cleanJSONResponse(responseText, extractedEmail);
-
-        let recipient = extractedEmail;
-        let subject = "Update";
-        let body = cleanedText;
-
-        const toMatch = cleanedText.match(/^To:\s*(.+)$/m);
-        const subjectMatch = cleanedText.match(/^Subject:\s*(.+)$/m);
-        
-        if (toMatch) recipient = toMatch[1].trim();
-        if (subjectMatch) subject = subjectMatch[1].trim();
-        
-        body = cleanedText.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim();
-
-        return Response.json({
-          role: "assistant",
-          isDraft: true,
-          recipient: recipient,
-          sender: "Your connected Gmail",
-          subject: subject,
-          content: body
-        });
-      }
-
-      // Has no email but has some details
       return Response.json({
         role: "assistant",
-        content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?"
+        isExpenseScan: true,
+        months: months,
+        content: `I will scan your inbox for billing emails from the last ${months} months.\n\nMake sure your Email Reader is connected in the Connected Apps panel.`
       });
     }
 
@@ -163,7 +113,7 @@ Format:
         title: title,
         date: meetingDate,
         time: meetingTime,
-        content: `Here is your event:\n\n📅 ${title}\n📆 ${meetingDate}\n⏰ ${meetingTime}\n\nClick below to add it to your calendar.`
+        content: `Here is your event:\n\n${title}\n${meetingDate}\n${meetingTime}\n\nClick below to add it to your calendar.`
       });
     }
 
@@ -207,7 +157,72 @@ Format:
         subject: meetingSubject,
         date: meetingDate,
         time: meetingTime,
-        content: `Here is the meeting invite:\n\n📅 ${meetingSubject}\n👤 ${extractedEmail}\n📆 ${meetingDate}\n⏰ ${meetingTime}\n\nReady to send the calendar invite.`
+        content: `Here is the meeting invite:\n\n${meetingSubject}\nWith: ${extractedEmail}\n${meetingDate}\n${meetingTime}\n\nReady to send the calendar invite.`
+      });
+    }
+
+    // ========== EMAIL DRAFT WITH SMART QUESTIONS ==========
+    if (isEmailDraftIntent(cleanInput)) {
+      const extractedEmail = extractEmail(cleanInput);
+
+      if (!extractedEmail && !cleanInput.includes('about')) {
+        return Response.json({
+          role: "assistant",
+          content: "Sure, I can send an email for you.\n\nWho should I send it to?"
+        });
+      }
+
+      if (extractedEmail && !cleanInput.includes('about') && cleanInput.split(' ').length < 8) {
+        return Response.json({
+          role: "assistant",
+          content: `Got it — sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?`
+        });
+      }
+
+      if (extractedEmail) {
+        const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails.
+
+Format:
+- Use clear subject lines
+- Use proper paragraphs with line breaks
+- Use bullet points when listing items
+- Keep a warm but professional tone
+- Never use [Your Name] placeholders
+- Never use JSON or curly braces
+- Write like a skilled human assistant`;
+
+        const responseText = await callGroq([
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient email: ${extractedEmail}.` }
+        ]);
+
+        const cleanedText = cleanJSONResponse(responseText, extractedEmail);
+
+        let recipient = extractedEmail;
+        let subject = "Update";
+        let body = cleanedText;
+
+        const toMatch = cleanedText.match(/^To:\s*(.+)$/m);
+        const subjectMatch = cleanedText.match(/^Subject:\s*(.+)$/m);
+        
+        if (toMatch) recipient = toMatch[1].trim();
+        if (subjectMatch) subject = subjectMatch[1].trim();
+        
+        body = cleanedText.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim();
+
+        return Response.json({
+          role: "assistant",
+          isDraft: true,
+          recipient: recipient,
+          sender: "Your connected Gmail",
+          subject: subject,
+          content: body
+        });
+      }
+
+      return Response.json({
+        role: "assistant",
+        content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?"
       });
     }
 
@@ -229,6 +244,7 @@ TONE:
 FORMATTING:
 - Never use JSON, curly braces, or code blocks in responses
 - Never use markdown unless the user asks for code
+- Never use **, ###, or * for formatting
 - Use emojis sparingly — only for emphasis, not decoration
 - Always put line breaks between different topics
 
