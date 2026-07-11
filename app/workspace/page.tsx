@@ -152,7 +152,6 @@ export default function Workspace() {
       const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: [{ role: 'user', content: userContent }] }) });
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
-      let recipient = data.recipient || '', subject = data.subject || '', body = data.content || '';
       const am: Message = { id: Math.random().toString(36).substring(7), role: 'assistant', content: data.content || '', isDraft: data.isDraft || false, isCalendar: data.isCalendar || false, isPersonalCalendar: data.isPersonalCalendar || false, recipient: data.recipient || '', sender: credentials?.email || 'Not connected', subject: data.subject || '', title: data.title || '', date: data.date || '', time: data.time || '' };
       if (convId && userId) { try { await saveMessage(convId, 'assistant', am.content, am.isDraft || false, am.recipient || '', am.subject || ''); } catch {} }
       setMessages(prev => [...prev, am]);
@@ -186,15 +185,20 @@ export default function Workspace() {
     finally { setIsLoading(false); }
   };
 
-  const handleOpenICS = async (message: Message) => {
+  const handleDownloadICS = async (message: Message) => {
     if (!message.title || !message.date || !message.time) return;
     try {
       const response = await fetch('/api/ics', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: message.title, date: message.date, time: message.time }) });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `loop-event.ics`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Event "${message.title}" added to your calendar.` }]);
+      setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: `Event "${message.title}" downloaded. Open it to add to your calendar.` }]);
     } catch { setMessages(prev => [...prev, { id: Math.random().toString(36).substring(7), role: 'assistant', content: 'Failed to create calendar event.' }]); }
   };
 
@@ -293,7 +297,7 @@ export default function Workspace() {
                       <div className="text-sm font-semibold text-white mb-1">{msg.title}</div>
                       <div className="text-sm text-gray-300 mb-1">Date: {msg.date}</div>
                       <div className="text-sm text-gray-300 mb-3">Time: {msg.time}</div>
-                      <button onClick={() => handleOpenICS(msg)} className="bg-green-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-green-600 transition">Add to Calendar</button>
+                      <button onClick={() => handleDownloadICS(msg)} className="bg-green-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:bg-green-600 transition">Add to Calendar</button>
                     </div>
                   ) : msg.isFollowUpPrompt ? (
                     <div className="bg-[#0d0d0d] border border-yellow-500/30 rounded-2xl p-4 max-w-[85%] w-full">
