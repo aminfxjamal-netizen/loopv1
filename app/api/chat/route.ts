@@ -21,7 +21,7 @@ function isCalendarIntent(text: string): boolean {
 
 function isPersonalCalendarIntent(text: string): boolean {
   const lowerText = text.toLowerCase();
-  const personalKeywords = ['add to my calendar', 'add to calendar', 'put in my calendar', 'schedule in my calendar', 'remind me'];
+  const personalKeywords = ['add to my calendar', 'add to calendar', 'put in my calendar', 'schedule in my calendar', 'remind me', 'schedule for me', 'schedule something'];
   return personalKeywords.some(keyword => lowerText.includes(keyword));
 }
 
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         title: title,
         date: meetingDate,
         time: meetingTime,
-        content: `Event: ${title}\nDate: ${meetingDate}\nTime: ${meetingTime}`
+        content: `Here is your event:\n\n📅 ${title}\n📆 ${meetingDate}\n⏰ ${meetingTime}\n\nClick below to add it to your calendar.`
       });
     }
 
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
         subject: meetingSubject,
         date: meetingDate,
         time: meetingTime,
-        content: `Meeting: ${meetingSubject}\nWith: ${extractedEmail}\nDate: ${meetingDate}\nTime: ${meetingTime}`
+        content: `Here is the meeting invite:\n\n📅 ${meetingSubject}\n👤 ${extractedEmail}\n📆 ${meetingDate}\n⏰ ${meetingTime}\n\nReady to send the calendar invite.`
       });
     }
 
@@ -153,14 +153,16 @@ export async function POST(req: Request) {
         });
       }
 
-      const systemPrompt = `Write a professional email in clean plain text. Use this exact format with no extra characters:
+      const systemPrompt = `You are Loop, a professional AI assistant. Write clean, structured emails.
 
-To: [email]
-Subject: [subject]
-
-[Your email body here with proper spacing]
-
-IMPORTANT: Do not use JSON. Do not use curly braces. Do not use quotation marks around fields. Output only the email text. Nothing else.`;
+Format:
+- Use clear subject lines
+- Use proper paragraphs with line breaks
+- Use bullet points when listing items
+- Keep a warm but professional tone
+- Never use [Your Name] placeholders
+- Never use JSON or curly braces
+- Write like a skilled human assistant`;
 
       const responseText = await callGroq([
         { role: "system", content: systemPrompt },
@@ -195,11 +197,30 @@ IMPORTANT: Do not use JSON. Do not use curly braces. Do not use quotation marks 
     }
 
     // ========== DEFAULT CHAT FLOW ==========
+    const chatSystemPrompt = `You are Loop, a polished and professional AI assistant. Your responses should be:
+
+CLEAN AND STRUCTURED:
+- Use clear sections with line breaks between them
+- Use numbered lists for multiple items
+- Use bullet points for options or features
+- Keep paragraphs short and readable
+
+TONE:
+- Warm, helpful, and direct
+- Professional but not robotic
+- Confident but not arrogant
+- Concise — respect the user's time
+
+FORMATTING:
+- Never use JSON, curly braces, or code blocks in responses
+- Never use markdown unless the user asks for code
+- Use emojis sparingly — only for emphasis, not decoration
+- Always put line breaks between different topics
+
+If the user asks for something you cannot do, explain why clearly and offer an alternative.`;
+
     const chatText = await callGroq([
-      { 
-        role: "system", 
-        content: "You are Loop, a helpful AI assistant. Keep responses natural, concise, and human. No JSON. No code blocks. No special formatting." 
-      },
+      { role: "system", content: chatSystemPrompt },
       { role: "user", content: cleanInput }
     ]);
 
