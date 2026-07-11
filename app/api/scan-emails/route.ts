@@ -1,12 +1,11 @@
-// @ts-nocheck
 export const dynamic = 'force-dynamic';
 
-export async function POST(req: Request): Promise<Response> {
+export async function POST(req: Request) {
   try {
     const { email, appPassword, months } = await req.json();
 
     if (!email || !appPassword) {
-      return Response.json({ success: false, error: "Email not connected." }, { status: 400 });
+      return new Response(JSON.stringify({ success: false, error: "Email not connected." }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     const Imap = require('imap');
@@ -26,13 +25,13 @@ export async function POST(req: Request): Promise<Response> {
     const searchSince = new Date();
     searchSince.setMonth(searchSince.getMonth() - (parseInt(months) || 3));
 
-    return new Promise<Response>((resolve) => {
+    const scanResult = await new Promise<any>((resolve, reject) => {
       imap.once('ready', () => {
         imap.openBox('INBOX', false, () => {
           imap.search([['SINCE', searchSince.toISOString()]], (err: any, searchResults: any) => {
             if (err || !searchResults || searchResults.length === 0) {
               imap.end();
-              resolve(Response.json({ success: true, subscriptions: [], message: "No billing emails found in the selected timeframe." }));
+              resolve({ success: true, subscriptions: [], message: "No billing emails found." });
               return;
             }
 
@@ -50,7 +49,6 @@ export async function POST(req: Request): Promise<Response> {
                   if (billingKeywords.some(kw => combined.includes(kw))) {
                     const amountMatch = combined.match(/\$\s*(\d+(\.\d{2})?)/) || combined.match(/(\d+(\.\d{2})?)\s*usd/i);
                     const amount = amountMatch ? '$' + amountMatch[1] : 'Unknown';
-
                     results.push({
                       from: parsed.from?.text || 'Unknown',
                       subject: parsed.subject || 'No subject',
@@ -64,25 +62,22 @@ export async function POST(req: Request): Promise<Response> {
 
             fetch.once('end', () => {
               imap.end();
-              resolve(Response.json({
-                success: true,
-                subscriptions: results,
-                count: results.length,
-                message: `Found ${results.length} billing emails from the last ${months || 3} months.`
-              }));
+              resolve({ success: true, subscriptions: results, count: results.length, message: `Found ${results.length} billing emails.` });
             });
           });
         });
       });
 
       imap.once('error', (err: any) => {
-        resolve(Response.json({ success: false, error: err.message }, { status: 500 }));
+        reject(err);
       });
 
       imap.connect();
     });
 
+    return new Response(JSON.stringify(scanResult), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
   } catch (error: any) {
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return new Response(JSON.stringify({ success: false, error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }
