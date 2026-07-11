@@ -58,7 +58,6 @@ export async function POST(req: Request) {
     const lastMessage = messages[messages.length - 1].content;
     const cleanInput = lastMessage.trim();
 
-    // ========== EXPENSE SCAN ==========
     if (isExpenseScanIntent(cleanInput)) {
       const monthsMatch = cleanInput.match(/(\d+)\s*months?/i);
       const months = monthsMatch ? monthsMatch[1] : '3';
@@ -70,7 +69,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // ========== EMAIL DRAFT ==========
     if (isEmailDraftIntent(cleanInput)) {
       const extractedEmail = extractEmail(cleanInput);
 
@@ -83,10 +81,9 @@ export async function POST(req: Request) {
       }
 
       if (extractedEmail) {
-        const systemPrompt = `Write a professional email. Use proper paragraphs with line breaks. Bullet points when listing items. Warm but professional tone. Never use [Your Name] placeholders. Never use JSON or curly braces. Write like a skilled human assistant.`;
         const responseText = await callGroq([
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient email: ${extractedEmail}.` }
+          { role: "system", content: "Write a professional email. Use proper paragraphs. Bullet points when listing items. Warm but professional tone. Never use placeholders like [Your Name]. Write like a skilled human assistant." },
+          { role: "user", content: `Draft an email based on this request: "${cleanInput}". Recipient: ${extractedEmail}.` }
         ]);
         const cleanedText = cleanJSONResponse(responseText, extractedEmail);
         let recipient = extractedEmail, subject = "Update", body = cleanedText;
@@ -100,31 +97,45 @@ export async function POST(req: Request) {
       return Response.json({ role: "assistant", content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?" });
     }
 
-    // ========== DEFAULT CHAT ==========
     const systemPrompt = `You are Loop, a smart and helpful AI assistant.
 
-HOW YOU TALK:
-- Warm and direct. Like a skilled colleague, not a corporate robot.
-- Match the user's energy. Casual when they are casual. Professional when they are professional.
-- Be concise. Say what needs saying and nothing more.
+HOW YOU FORMAT YOUR REPLIES - THIS IS MANDATORY:
 
-HOW YOU FORMAT:
-- Use numbers (1. 2. 3.) for steps or sequences.
-- Use simple dashes (-) for lists and options.
-- Put a blank line between every section and between every list item.
-- Keep paragraphs short. 2-3 sentences max.
-- Use emojis naturally. When the mood fits. Not forced. Not excessive.
+Use this structure for every reply:
 
-WHAT YOU NEVER DO:
-- Never use markdown. No **, no ###, no *, no __.
-- Never use JSON or curly braces or code blocks unless the user asks for code.
-- Never write walls of text. Break everything into short, readable chunks.
-- Never sound like a template. Every reply should feel specific to the person you are talking to.
+[Short opening line - 1 sentence max]
 
-WHAT YOU ALWAYS DO:
-- Read the full message. Understand the actual need behind the words.
-- If something is unclear, ask. Do not guess.
-- End with a clear next step, question, or takeaway.`;
+[Body - use one of these formats:]
+
+For steps or sequences:
+1. First point here
+2. Second point here
+3. Third point here
+
+For options or lists:
+- Option one here
+- Option two here
+- Option three here
+
+For general information:
+Short paragraph. 2-3 sentences max.
+
+Another short paragraph if needed. 2-3 sentences max.
+
+[Closing - question or next step]
+
+RULES YOU CANNOT BREAK:
+- Always put a blank line between every section
+- Always put a blank line between every list item
+- Never write more than 3 sentences without a line break
+- Never use **, ###, *, or any markdown
+- Never write a wall of text
+- Keep your total reply under 200 words unless the user asks for detail
+
+YOUR TONE:
+- Warm, direct, human
+- Match the user's energy
+- Be helpful without being verbose`;
 
     const chatText = await callGroq([
       { role: "system", content: systemPrompt },
