@@ -19,6 +19,12 @@ function isExpenseScanIntent(text: string): boolean {
   return scanKeywords.some(keyword => lowerText.includes(keyword));
 }
 
+function isFileSearchIntent(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  const searchKeywords = ['find file', 'find my', 'search for', 'look for', 'where is', 'find the'];
+  return searchKeywords.some(keyword => lowerText.includes(keyword));
+}
+
 async function callGroq(messages: any[], maxTokens = 1024) {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -33,7 +39,6 @@ async function callGroq(messages: any[], maxTokens = 1024) {
       max_tokens: maxTokens
     })
   });
-
   if (!response.ok) throw new Error(`Groq: ${response.status}`);
   const data = await response.json();
   return data.choices[0].message.content;
@@ -61,25 +66,22 @@ export async function POST(req: Request) {
     if (isExpenseScanIntent(cleanInput)) {
       const monthsMatch = cleanInput.match(/(\d+)\s*months?/i);
       const months = monthsMatch ? monthsMatch[1] : '3';
-      return Response.json({
-        role: "assistant",
-        isExpenseScan: true,
-        months: months,
-        content: `I can help you find forgotten subscriptions.\n\nHere is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?`
-      });
+      return Response.json({ role: "assistant", isExpenseScan: true, months, content: `I can help you find forgotten subscriptions.\n\nHere is what we can do:\n\n1. Think about tools you signed up for recently\n\n2. List them here and I will help you track them\n\n3. For any you want to cancel, I will draft the cancellation email\n\nWhich subscriptions are you currently paying for?` });
+    }
+
+    if (isFileSearchIntent(cleanInput)) {
+      const searchQuery = cleanInput.replace(/find|search for|look for|where is|find my|find the/gi, '').trim();
+      return Response.json({ role: "assistant", isDriveSearch: true, query: searchQuery, content: `Searching your Drive for "${searchQuery}"...\n\nMake sure your Drive is connected in the Connected Apps panel.` });
     }
 
     if (isEmailDraftIntent(cleanInput)) {
       const extractedEmail = extractEmail(cleanInput);
-
       if (!extractedEmail && !cleanInput.includes('about')) {
         return Response.json({ role: "assistant", content: "Sure, I can send an email for you.\n\nWho should I send it to?" });
       }
-
       if (extractedEmail && !cleanInput.includes('about') && cleanInput.split(' ').length < 8) {
         return Response.json({ role: "assistant", content: `Got it - sending to ${extractedEmail}.\n\nWhat is the subject and what would you like the email to say?` });
       }
-
       if (extractedEmail) {
         const responseText = await callGroq([
           { role: "system", content: "Write a professional email. Use proper paragraphs. Bullet points when listing items. Warm but professional tone. Never use placeholders like [Your Name]. Write like a skilled human assistant." },
@@ -93,7 +95,6 @@ export async function POST(req: Request) {
         body = cleanedText.replace(/^To:.*\n?/, '').replace(/^Subject:.*\n?/, '').trim();
         return Response.json({ role: "assistant", isDraft: true, recipient, sender: "Your connected Gmail", subject, content: body });
       }
-
       return Response.json({ role: "assistant", content: "I can draft that email.\n\nWho should I send it to, and what would you like the subject to be?" });
     }
 
